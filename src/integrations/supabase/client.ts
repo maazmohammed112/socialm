@@ -5,25 +5,7 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://jhppdxxamrvayvpruwde.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpocHBkeHhhbXJ2YXl2cHJ1d2RlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxMDI4NjUsImV4cCI6MjA2MzY3ODg2NX0.RDXXa5-2ubUkljLrCqF2MWsuXuetU_iM7kYhyrQrnxs";
 
-// Create client with optimized settings
-export const supabase = createClient<Database>(
-  SUPABASE_URL, 
-  SUPABASE_PUBLISHABLE_KEY,
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 10
-      }
-    },
-    global: {
-      headers: {
-        'x-application-name': 'socialchat'
-      }
-    }
-  }
-);
+// Import the supabase client like this:
+// import { supabase } from "@/integrations/supabase/client";
+
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

@@ -97,22 +97,41 @@ export function useEnhancedNotifications() {
   // Create system notification about theme customization
   const createSystemNotification = useCallback(async (userId: string) => {
     try {
-      // Create a mock notification if the table doesn't exist yet
-      const mockNotification = {
-        id: `mock-${Date.now()}`,
+      // Check if notifications table exists
+      const { error: tableCheckError } = await supabase
+        .from('notifications')
+        .select('id')
+        .limit(1);
+      
+      if (tableCheckError) {
+        console.log('Notifications table does not exist yet, skipping system notification');
+        return;
+      }
+      
+      const systemNotification = {
         user_id: userId,
         type: 'system',
         content: "💡 Don't like the pixel font? No problem! Visit your Profile section to change themes and customize fonts & colors to your preference.",
-        read: false,
-        created_at: new Date().toISOString()
+        read: false
       };
 
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert(systemNotification)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating system notification:', error);
+        return;
+      }
+
       // Add to local state
-      setNotifications(prev => [mockNotification, ...prev]);
+      setNotifications(prev => [data, ...prev]);
       setUnreadCount(prev => prev + 1);
       
       // Save to local storage
-      const updatedNotifications = [mockNotification, ...notifications];
+      const updatedNotifications = [data, ...notifications];
       await saveNotifications(userId, updatedNotifications);
       await saveUnreadCount(userId, unreadCount + 1);
 
@@ -142,33 +161,8 @@ export function useEnhancedNotifications() {
       
       if (tableCheckError) {
         console.log('Notifications table does not exist yet, using empty array');
-        // Create mock notifications for testing
-        const mockNotifications = [
-          {
-            id: `mock-system-${Date.now()}`,
-            user_id: userId,
-            type: 'system',
-            content: "💡 Don't like the pixel font? No problem! Visit your Profile section to change themes and customize fonts & colors to your preference.",
-            read: false,
-            created_at: new Date().toISOString()
-          },
-          {
-            id: `mock-like-${Date.now()}`,
-            user_id: userId,
-            type: 'like',
-            content: "Someone liked your post",
-            read: false,
-            created_at: new Date(Date.now() - 3600000).toISOString()
-          }
-        ];
-        
-        setNotifications(mockNotifications);
-        setUnreadCount(mockNotifications.length);
-        
-        // Save to local storage for offline access
-        await saveNotifications(userId, mockNotifications);
-        await saveUnreadCount(userId, mockNotifications.length);
-        
+        setNotifications([]);
+        setUnreadCount(0);
         setIsLoading(false);
         return;
       }
@@ -209,47 +203,39 @@ export function useEnhancedNotifications() {
     referenceId?: string
   ) => {
     try {
-      // Create a mock notification if the table doesn't exist yet
-      const mockNotification = {
-        id: `mock-${Date.now()}`,
-        user_id: userId,
-        type,
-        content,
-        reference_id: referenceId,
-        read: false,
-        created_at: new Date().toISOString()
-      };
+      // Check if notifications table exists
+      const { error: tableCheckError } = await supabase
+        .from('notifications')
+        .select('id')
+        .limit(1);
+      
+      if (tableCheckError) {
+        console.log('Notifications table does not exist yet, skipping notification creation');
+        return null;
+      }
+      
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: userId,
+          type,
+          content,
+          reference_id: referenceId,
+          read: false
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
 
       // Update local state
-      setNotifications(prev => [mockNotification, ...prev]);
+      setNotifications(prev => [data, ...prev]);
       setUnreadCount(prev => prev + 1);
       
       // Save to local storage
-      const updatedNotifications = [mockNotification, ...notifications];
+      const updatedNotifications = [data, ...notifications];
       await saveNotifications(userId, updatedNotifications);
       await saveUnreadCount(userId, unreadCount + 1);
-
-      // Try to create in database if it exists
-      try {
-        const { error: tableCheckError } = await supabase
-          .from('notifications')
-          .select('id')
-          .limit(1);
-        
-        if (!tableCheckError) {
-          await supabase
-            .from('notifications')
-            .insert({
-              user_id: userId,
-              type,
-              content,
-              reference_id: referenceId,
-              read: false
-            });
-        }
-      } catch (dbError) {
-        console.log('Database notification creation handled:', dbError);
-      }
 
       // Send OneSignal notification if user is subscribed
       if (oneSignalUser.subscribed) {
@@ -259,7 +245,7 @@ export function useEnhancedNotifications() {
         });
       }
 
-      return mockNotification;
+      return data;
     } catch (error) {
       console.error('Error creating notification:', error);
       return null;
@@ -299,6 +285,24 @@ export function useEnhancedNotifications() {
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
+      // Check if notifications table exists
+      const { error: tableCheckError } = await supabase
+        .from('notifications')
+        .select('id')
+        .limit(1);
+      
+      if (tableCheckError) {
+        console.log('Notifications table does not exist yet, skipping mark as read');
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', notificationId);
+
+      if (error) throw error;
+
       // Update local state
       const updatedNotifications = notifications.map(n => 
         n.id === notificationId ? { ...n, read: true } : n
@@ -312,23 +316,6 @@ export function useEnhancedNotifications() {
         await saveNotifications(currentUser.id, updatedNotifications);
         await saveUnreadCount(currentUser.id, newUnreadCount);
       }
-
-      // Try to update in database if it exists
-      try {
-        const { error: tableCheckError } = await supabase
-          .from('notifications')
-          .select('id')
-          .limit(1);
-        
-        if (!tableCheckError) {
-          await supabase
-            .from('notifications')
-            .update({ read: true })
-            .eq('id', notificationId);
-        }
-      } catch (dbError) {
-        console.log('Database notification update handled:', dbError);
-      }
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -339,6 +326,25 @@ export function useEnhancedNotifications() {
     if (!currentUser) return;
 
     try {
+      // Check if notifications table exists
+      const { error: tableCheckError } = await supabase
+        .from('notifications')
+        .select('id')
+        .limit(1);
+      
+      if (tableCheckError) {
+        console.log('Notifications table does not exist yet, skipping mark all as read');
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', currentUser.id)
+        .eq('read', false);
+
+      if (error) throw error;
+
       // Update local state
       const updatedNotifications = notifications.map(n => ({ ...n, read: true }));
       setNotifications(updatedNotifications);
@@ -347,24 +353,6 @@ export function useEnhancedNotifications() {
       // Save to local storage
       await saveNotifications(currentUser.id, updatedNotifications);
       await saveUnreadCount(currentUser.id, 0);
-
-      // Try to update in database if it exists
-      try {
-        const { error: tableCheckError } = await supabase
-          .from('notifications')
-          .select('id')
-          .limit(1);
-        
-        if (!tableCheckError) {
-          await supabase
-            .from('notifications')
-            .update({ read: true })
-            .eq('user_id', currentUser.id)
-            .eq('read', false);
-        }
-      } catch (dbError) {
-        console.log('Database notification update handled:', dbError);
-      }
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
@@ -373,6 +361,24 @@ export function useEnhancedNotifications() {
   // Delete notification
   const deleteNotification = useCallback(async (notificationId: string) => {
     try {
+      // Check if notifications table exists
+      const { error: tableCheckError } = await supabase
+        .from('notifications')
+        .select('id')
+        .limit(1);
+      
+      if (tableCheckError) {
+        console.log('Notifications table does not exist yet, skipping delete notification');
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('notifications')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', notificationId);
+
+      if (error) throw error;
+
       // Update local state
       const wasUnread = notifications.find(n => n.id === notificationId)?.read === false;
       const updatedNotifications = notifications.filter(n => n.id !== notificationId);
@@ -393,23 +399,6 @@ export function useEnhancedNotifications() {
       if (currentUser) {
         await saveNotifications(currentUser.id, updatedNotifications);
       }
-
-      // Try to update in database if it exists
-      try {
-        const { error: tableCheckError } = await supabase
-          .from('notifications')
-          .select('id')
-          .limit(1);
-        
-        if (!tableCheckError) {
-          await supabase
-            .from('notifications')
-            .update({ deleted_at: new Date().toISOString() })
-            .eq('id', notificationId);
-        }
-      } catch (dbError) {
-        console.log('Database notification update handled:', dbError);
-      }
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
@@ -420,6 +409,25 @@ export function useEnhancedNotifications() {
     if (!currentUser) return;
 
     try {
+      // Check if notifications table exists
+      const { error: tableCheckError } = await supabase
+        .from('notifications')
+        .select('id')
+        .limit(1);
+      
+      if (tableCheckError) {
+        console.log('Notifications table does not exist yet, skipping clear all notifications');
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('notifications')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('user_id', currentUser.id)
+        .is('deleted_at', null);
+
+      if (error) throw error;
+
       // Update local state
       setNotifications([]);
       setUnreadCount(0);
@@ -427,24 +435,6 @@ export function useEnhancedNotifications() {
       // Save to local storage
       await saveNotifications(currentUser.id, []);
       await saveUnreadCount(currentUser.id, 0);
-
-      // Try to update in database if it exists
-      try {
-        const { error: tableCheckError } = await supabase
-          .from('notifications')
-          .select('id')
-          .limit(1);
-        
-        if (!tableCheckError) {
-          await supabase
-            .from('notifications')
-            .update({ deleted_at: new Date().toISOString() })
-            .eq('user_id', currentUser.id)
-            .is('deleted_at', null);
-        }
-      } catch (dbError) {
-        console.log('Database notification update handled:', dbError);
-      }
     } catch (error) {
       console.error('Error clearing notifications:', error);
     }

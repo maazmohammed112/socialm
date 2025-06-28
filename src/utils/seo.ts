@@ -1,87 +1,137 @@
-// Simple SEO utility for managing page metadata
-export const pageSEO = {
-  home: {
-    title: 'SocialChat - Real-time Social Messaging Platform | Connect with Friends',
-    description: 'Join SocialChat - the ultimate real-time social messaging platform. Connect with friends, share posts and stories, chat instantly, and build your social network.',
-    keywords: ['social media', 'chat app', 'messaging platform', 'real-time chat', 'social network'],
-    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
-    canonicalUrl: 'https://socialchat.site/'
-  },
-  
-  login: {
-    title: 'Login to SocialChat | Secure Access to Your Account',
-    description: 'Sign in to your SocialChat account to connect with friends, send messages, and share updates in real-time.',
-    keywords: ['login', 'sign in', 'account access', 'social media login'],
-    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
-    canonicalUrl: 'https://socialchat.site/login'
-  },
-  
-  register: {
-    title: 'Create a SocialChat Account | Join Our Community',
-    description: 'Sign up for SocialChat to connect with friends, share moments, and join our growing community of users.',
-    keywords: ['register', 'sign up', 'create account', 'join social network'],
-    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
-    canonicalUrl: 'https://socialchat.site/register'
-  },
-  
-  dashboard: {
-    title: 'Dashboard | SocialChat',
-    description: 'Your SocialChat dashboard - view posts, stories, and connect with friends in real-time.',
-    keywords: ['dashboard', 'social feed', 'posts', 'stories'],
-    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
-    canonicalUrl: 'https://socialchat.site/dashboard'
-  },
-  
-  profile: {
-    title: 'Profile | SocialChat',
-    description: 'Manage your SocialChat profile, customize themes, and view your posts and activities.',
-    keywords: ['profile', 'user profile', 'settings', 'customization'],
-    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
-    canonicalUrl: 'https://socialchat.site/profile'
-  },
-  
-  messages: {
-    title: 'Messages | SocialChat',
-    description: 'Send and receive real-time messages with your friends on SocialChat.',
-    keywords: ['messages', 'chat', 'real-time messaging', 'direct messages'],
-    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
-    canonicalUrl: 'https://socialchat.site/messages'
-  },
-  
-  friends: {
-    title: 'Friends | SocialChat',
-    description: 'Manage your friends, send friend requests, and discover new connections on SocialChat.',
-    keywords: ['friends', 'friend requests', 'social connections', 'networking'],
-    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
-    canonicalUrl: 'https://socialchat.site/friends'
-  },
-  
-  notifications: {
-    title: 'Notifications | SocialChat',
-    description: 'View your notifications, friend requests, likes, comments, and messages on SocialChat.',
-    keywords: ['notifications', 'alerts', 'friend requests', 'messages'],
-    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
-    canonicalUrl: 'https://socialchat.site/notifications'
-  },
-  
-  vortex: {
-    title: 'Vortex Group Chat | Private Group Messaging on SocialChat',
-    description: 'Join private group chats with Vortex on SocialChat. Create groups, invite friends, and enjoy secure group messaging.',
-    keywords: ['group chat', 'private groups', 'team messaging', 'chat rooms', 'vortex'],
-    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
-    canonicalUrl: 'https://socialchat.site/vortex'
-  },
-  
-  notFound: {
-    title: '404 - Page Not Found | SocialChat',
-    description: 'The page you are looking for does not exist. Return to SocialChat to continue connecting with friends.',
-    keywords: ['404', 'page not found', 'error'],
-    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
-    canonicalUrl: 'https://socialchat.site/404'
-  }
+import { Helmet } from 'react-helmet-async';
+
+export interface SEOProps {
+  title?: string;
+  description?: string;
+  keywords?: string[];
+  ogImage?: string;
+  ogUrl?: string;
+  ogType?: 'website' | 'article' | 'profile';
+  twitterCard?: 'summary' | 'summary_large_image';
+  canonicalUrl?: string;
+  noIndex?: boolean;
+}
+
+export const defaultSEO: SEOProps = {
+  title: 'SocialChat - Real-time Social Messaging Platform',
+  description: 'Connect with friends on SocialChat - a modern real-time social messaging platform. Share posts, stories, chat with friends, and build your social network.',
+  keywords: ['social media', 'chat', 'messaging', 'friends', 'posts', 'stories', 'social network', 'real-time chat'],
+  ogImage: '/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
+  ogUrl: 'https://socialchat.site/',
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+  canonicalUrl: 'https://socialchat.site/',
+  noIndex: false,
 };
 
-// Simple function to set document title
-export function setPageTitle(title: string) {
-  document.title = title;
-}
+export const pageSEO: Record<string, SEOProps> = {
+  home: {
+    ...defaultSEO,
+    title: 'SocialChat - Connect with Friends | Real-time Social Messaging',
+    description: 'Join SocialChat - the ultimate real-time social messaging platform. Connect with friends, share posts and stories, chat instantly, build your social network.',
+    canonicalUrl: 'https://socialchat.site/',
+  },
+  login: {
+    ...defaultSEO,
+    title: 'Login to SocialChat | Secure Access to Your Account',
+    description: 'Sign in to your SocialChat account to connect with friends, send messages, and share updates in real-time.',
+    canonicalUrl: 'https://socialchat.site/login',
+  },
+  register: {
+    ...defaultSEO,
+    title: 'Create a SocialChat Account | Join Our Community',
+    description: 'Sign up for SocialChat to connect with friends, share moments, and join our growing community of users.',
+    canonicalUrl: 'https://socialchat.site/register',
+  },
+  dashboard: {
+    ...defaultSEO,
+    title: 'SocialChat Dashboard | Your Social Feed',
+    description: 'View your personalized social feed, connect with friends, and share your thoughts on SocialChat.',
+    canonicalUrl: 'https://socialchat.site/dashboard',
+  },
+  friends: {
+    ...defaultSEO,
+    title: 'SocialChat Friends | Manage Your Connections',
+    description: 'Connect with friends, manage friend requests, and grow your social network on SocialChat.',
+    canonicalUrl: 'https://socialchat.site/friends',
+  },
+  messages: {
+    ...defaultSEO,
+    title: 'SocialChat Messages | Real-time Conversations',
+    description: 'Chat with your friends in real-time using SocialChat\'s messaging platform.',
+    canonicalUrl: 'https://socialchat.site/messages',
+  },
+  vortex: {
+    ...defaultSEO,
+    title: 'Vortex Group Chat | Private Group Messaging on SocialChat',
+    description: 'Join private group chats with Vortex on SocialChat. Create groups, invite friends, and enjoy secure group messaging.',
+    canonicalUrl: 'https://socialchat.site/vortex',
+  },
+  profile: {
+    ...defaultSEO,
+    title: 'Your SocialChat Profile | Manage Your Account',
+    description: 'View and edit your SocialChat profile, customize your experience, and manage your account settings.',
+    canonicalUrl: 'https://socialchat.site/profile',
+  },
+  notifications: {
+    ...defaultSEO,
+    title: 'SocialChat Notifications | Stay Updated',
+    description: 'Stay updated with notifications about friend requests, messages, likes, and comments on SocialChat.',
+    canonicalUrl: 'https://socialchat.site/notifications',
+  },
+  settings: {
+    ...defaultSEO,
+    title: 'SocialChat Settings | Customize Your Experience',
+    description: 'Customize your SocialChat experience with personalized settings and preferences.',
+    canonicalUrl: 'https://socialchat.site/settings',
+  },
+  notFound: {
+    ...defaultSEO,
+    title: 'Page Not Found | SocialChat',
+    description: 'The page you are looking for does not exist or has been moved.',
+    canonicalUrl: 'https://socialchat.site/404',
+    noIndex: true,
+  },
+};
+
+export const SEO = ({ 
+  title = defaultSEO.title,
+  description = defaultSEO.description,
+  keywords = defaultSEO.keywords,
+  ogImage = defaultSEO.ogImage,
+  ogUrl = defaultSEO.ogUrl,
+  ogType = defaultSEO.ogType,
+  twitterCard = defaultSEO.twitterCard,
+  canonicalUrl = defaultSEO.canonicalUrl,
+  noIndex = defaultSEO.noIndex,
+}: SEOProps) => {
+  return (
+    <Helmet>
+      <title>{title}</title>
+      <meta name="description" content={description} />
+      {keywords && <meta name="keywords" content={keywords.join(', ')} />}
+      
+      {/* Open Graph / Facebook */}
+      <meta property="og:type" content={ogType} />
+      <meta property="og:url" content={ogUrl} />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={description} />
+      <meta property="og:image" content={ogImage} />
+      <meta property="og:site_name" content="SocialChat" />
+      
+      {/* Twitter */}
+      <meta property="twitter:card" content={twitterCard} />
+      <meta property="twitter:url" content={ogUrl} />
+      <meta property="twitter:title" content={title} />
+      <meta property="twitter:description" content={description} />
+      <meta property="twitter:image" content={ogImage} />
+      <meta name="twitter:site" content="@socialchat" />
+      
+      {/* Canonical URL */}
+      <link rel="canonical" href={canonicalUrl} />
+      
+      {/* No index if specified */}
+      {noIndex && <meta name="robots" content="noindex, nofollow" />}
+    </Helmet>
+  );
+};

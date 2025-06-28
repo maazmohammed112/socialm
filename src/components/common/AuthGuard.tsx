@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,100 +12,31 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    let mounted = true;
-    const MAX_RETRIES = 3;
-
-    const initializeAuth = async () => {
-      try {
-        // Check for existing session first
-        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('Session error:', sessionError);
-          if (mounted) {
-            setError('Authentication error occurred');
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (mounted) {
-          setSession(initialSession);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error('Auth initialization error:', err);
-        if (mounted) {
-          if (retryCount < MAX_RETRIES) {
-            // Retry after a delay
-            setTimeout(() => {
-              setRetryCount(prev => prev + 1);
-            }, 1000);
-          } else {
-            setError('Failed to initialize authentication');
-            setLoading(false);
-          }
-        }
-      }
-    };
-
-    // Set up the auth state listener
+    // Set up the auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state changed:', event);
-        if (mounted) {
-          setSession(session);
-          setError(null);
-          setLoading(false);
-        }
+        setSession(session);
+        setLoading(false);
       }
     );
 
-    initializeAuth();
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
 
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
-  }, [retryCount]);
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-social-blue/5 to-social-green/5">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-social-blue mx-auto"></div>
-          <p className="text-sm text-muted-foreground font-pixelated">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50 to-red-100">
-        <div className="text-center space-y-4 p-6 bg-white rounded-lg shadow-lg">
-          <div className="text-red-500 text-xl">⚠️</div>
-          <h2 className="text-lg font-semibold text-red-700">Authentication Error</h2>
-          <p className="text-sm text-red-600">{error}</p>
-          <div className="flex gap-2 justify-center">
-            <button 
-              onClick={() => window.location.reload()} 
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-            >
-              Retry
-            </button>
-            <button 
-              onClick={() => window.location.href = '/login'} 
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-            >
-              Go to Login
-            </button>
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-social-blue"></div>
       </div>
     );
   }
