@@ -1,6 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
+import { clearUserData } from "@/utils/localStorage";
 
 /**
  * Checks if a user is authenticated based on the supabase session
@@ -23,8 +23,16 @@ export const getCurrentUser = async () => {
  */
 export const logoutUser = async () => {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Clear local storage data for this user
+    if (user) {
+      await clearUserData(user.id);
+    }
+    
     await supabase.auth.signOut();
-    // Clear any local storage or cached data
+    
+    // Clear any remaining local storage or cached data
     localStorage.clear();
     sessionStorage.clear();
     
