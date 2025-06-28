@@ -62,6 +62,7 @@ export function Notifications() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { toast } = useToast();
   const { oneSignalUser, requestPermission, unsubscribe } = useOneSignalNotifications();
 
@@ -187,8 +188,6 @@ export function Notifications() {
       console.log('Sample notifications creation handled');
     }
   };
-
-  const [unreadCount, setUnreadCount] = useState(0);
 
   const markAsRead = async (notificationId: string) => {
     try {
