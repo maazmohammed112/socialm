@@ -1,3 +1,6 @@
+import React from 'react';
+import { Helmet } from 'react-helmet-async';
+
 // SEO utility functions for dynamic meta tags and structured data
 export interface SEOData {
   title: string;
@@ -9,6 +12,81 @@ export interface SEOData {
   author?: string;
   publishedTime?: string;
   modifiedTime?: string;
+}
+
+// SEO Component for React Helmet
+export function SEO(props: SEOData) {
+  const {
+    title,
+    description,
+    keywords,
+    ogImage,
+    canonicalUrl,
+    type = 'website',
+    author,
+    publishedTime,
+    modifiedTime
+  } = props;
+
+  return (
+    <Helmet>
+      <title>{title}</title>
+      <meta name="description" content={description} />
+      
+      {keywords && <meta name="keywords" content={keywords.join(', ')} />}
+      
+      {/* Open Graph tags */}
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={description} />
+      <meta property="og:type" content={type} />
+      
+      {ogImage && <meta property="og:image" content={ogImage} />}
+      {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+      
+      {/* Twitter Card tags */}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={description} />
+      {ogImage && <meta name="twitter:image" content={ogImage} />}
+      
+      {/* Article specific tags */}
+      {type === 'article' && author && (
+        <meta property="article:author" content={author} />
+      )}
+      {type === 'article' && publishedTime && (
+        <meta property="article:published_time" content={publishedTime} />
+      )}
+      {type === 'article' && modifiedTime && (
+        <meta property="article:modified_time" content={modifiedTime} />
+      )}
+      
+      {/* Canonical URL */}
+      {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+      
+      {/* Structured Data */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebApplication',
+          name: 'SocialChat',
+          description: description,
+          url: canonicalUrl || 'https://socialchat.site',
+          applicationCategory: 'SocialNetworkingApplication',
+          operatingSystem: 'Web Browser',
+          offers: {
+            '@type': 'Offer',
+            price: '0',
+            priceCurrency: 'USD'
+          },
+          author: {
+            '@type': 'Person',
+            name: 'Mohammed Maaz A',
+            url: 'https://www.linkedin.com/in/mohammed-maaz-a-0aa730217/'
+          }
+        })}
+      </script>
+    </Helmet>
+  );
 }
 
 // Update document title and meta tags
@@ -244,6 +322,14 @@ export const pageSEO = {
     keywords: ['group chat', 'private groups', 'team messaging', 'chat rooms', 'vortex'],
     ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
     canonicalUrl: 'https://socialchat.site/vortex'
+  },
+  
+  notFound: {
+    title: '404 - Page Not Found | SocialChat',
+    description: 'The page you are looking for does not exist. Return to SocialChat to continue connecting with friends.',
+    keywords: ['404', 'page not found', 'error'],
+    ogImage: 'https://socialchat.site/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png',
+    canonicalUrl: 'https://socialchat.site/404'
   }
 };
 
