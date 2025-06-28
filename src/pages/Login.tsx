@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { LoginForm } from '@/components/auth/LoginForm';
-import { SEO, pageSEO } from '@/utils/seo';
+import { pageSEO, setPageTitle } from '@/utils/seo';
 
 export function Login() {
+  useEffect(() => {
+    setPageTitle(pageSEO.login.title);
+  }, []);
+
   return (
-    <>
-      <SEO {...pageSEO.login} />
-      <AuthLayout>
-        <LoginForm />
-      </AuthLayout>
-    </>
+    <AuthLayout>
+      <LoginForm />
+    </AuthLayout>
   );
 }
 

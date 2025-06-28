@@ -1,16 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AuthLayout } from '@/components/auth/AuthLayout';
 import { RegisterForm } from '@/components/auth/RegisterForm';
-import { SEO, pageSEO } from '@/utils/seo';
+import { pageSEO, setPageTitle } from '@/utils/seo';
 
 export function Register() {
+  useEffect(() => {
+    setPageTitle(pageSEO.register.title);
+  }, []);
+
   return (
-    <>
-      <SEO {...pageSEO.register} />
-      <AuthLayout>
-        <RegisterForm />
-      </AuthLayout>
-    </>
+    <AuthLayout>
+      <RegisterForm />
+    </AuthLayout>
   );
 }
 
