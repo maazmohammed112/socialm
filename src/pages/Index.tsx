@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { MessageCircle, User, Users, Heart } from 'lucide-react';
+import { MessageCircle, User, Users, Heart, Linkedin } from 'lucide-react';
 
 export function Index() {
   return (
@@ -108,10 +108,54 @@ export function Index() {
       
       {/* Footer */}
       <footer className="border-t py-4 sm:py-8 bg-background">
-        <div className="container mx-auto px-3 sm:px-6 text-sm text-muted-foreground text-center">
-          <div className="flex flex-col items-center justify-center space-y-2">
+        <div className="container mx-auto px-3 sm:px-6">
+          <div className="flex flex-col items-center justify-center space-y-4">
             <img src="/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png" alt="SocialChat Logo" className="h-6 sm:h-8 w-auto mb-2" />
-            <p className="font-pixelated text-xs sm:text-sm">© 2025 SocialChat. All rights reserved.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl text-center">
+              <div className="space-y-2">
+                <h3 className="font-pixelated text-sm font-medium">About</h3>
+                <p className="font-pixelated text-xs text-muted-foreground">
+                  SocialChat is a real-time social messaging platform developed by a Bachelor of Computer Science student.
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-pixelated text-sm font-medium">Developer</h3>
+                <p className="font-pixelated text-xs text-muted-foreground">
+                  Built solely by Mohammed Maaz A
+                </p>
+                <a 
+                  href="https://www.linkedin.com/in/mohammed-maaz-a-0aa730217/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-pixelated text-xs text-social-green hover:underline"
+                >
+                  <Linkedin className="h-3 w-3" />
+                  Connect on LinkedIn
+                </a>
+              </div>
+              
+              <div className="space-y-2">
+                <h3 className="font-pixelated text-sm font-medium">Company</h3>
+                <p className="font-pixelated text-xs text-muted-foreground">
+                  Follow SocialChat for updates
+                </p>
+                <a 
+                  href="https://www.linkedin.com/company/socialchatmz/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 font-pixelated text-xs text-social-green hover:underline"
+                >
+                  <Linkedin className="h-3 w-3" />
+                  Company Page
+                </a>
+              </div>
+            </div>
+            
+            <p className="font-pixelated text-xs text-muted-foreground mt-4">
+              © 2025 SocialChat. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
