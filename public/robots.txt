@@ -57,8 +57,6 @@ Allow: /
 # Restrict sensitive areas
 Disallow: /admin
 Disallow: /api/
-Disallow: /login
-Disallow: /register
 Disallow: /dashboard
 Disallow: /messages
 Disallow: /notifications
