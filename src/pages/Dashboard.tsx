@@ -10,7 +10,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemePrompt } from '@/components/dashboard/ThemePrompt';
-import { getCachedData, setCachedData, STORAGE_KEYS } from '@/lib/local-storage';
 
 export function Dashboard() {
   const [postContent, setPostContent] = useState('');
@@ -22,28 +21,6 @@ export function Dashboard() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const postBoxRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-
-  // Initialize offline support
-  useEffect(() => {
-    // Listen for online/offline events
-    const handleOnline = () => {
-      console.log('Device is online, syncing data...');
-      // Sync any pending posts or actions
-    };
-    
-    const handleOffline = () => {
-      console.log('Device is offline, using cached data...');
-      // Show offline indicator or message
-    };
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   // Listen for scroll to top event with improved implementation
   useEffect(() => {
@@ -147,51 +124,18 @@ export function Dashboard() {
       }
 
       // Create post
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('posts')
         .insert({
           content: postContent.trim(),
           user_id: user.id,
           image_url: imageUrl
-        })
-        .select(`
-          id,
-          content,
-          image_url,
-          created_at,
-          updated_at,
-          user_id,
-          profiles:user_id (
-            name,
-            username,
-            avatar
-          )
-        `)
-        .single();
+        });
 
       if (error) throw error;
 
-      // Clear form
       setPostContent('');
       removeImage();
-      
-      // Add to cache if exists
-      if (data) {
-        const cachedPosts = getCachedData(STORAGE_KEYS.POSTS);
-        if (cachedPosts.length > 0) {
-          const newPost = {
-            ...data,
-            likes_count: 0,
-            comments_count: 0,
-            is_liked: false,
-            likes: [],
-            comments: []
-          };
-          
-          const updatedCache = [newPost, ...cachedPosts];
-          setCachedData(STORAGE_KEYS.POSTS, updatedCache, 5 * 60 * 1000); // 5 minutes
-        }
-      }
       
       // Force feed refresh by updating key - this will trigger CommunityFeed to re-mount
       setFeedKey(prev => prev + 1);
