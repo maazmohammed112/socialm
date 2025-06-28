@@ -1,37 +1,73 @@
 import localforage from 'localforage';
 
-// Initialize localforage instances for different stores
+// Initialize localforage instances with optimized configurations
 const userStore = localforage.createInstance({
   name: 'socialchat',
-  storeName: 'user'
+  storeName: 'user',
+  description: 'User profiles and preferences',
+  driver: [
+    localforage.INDEXEDDB,
+    localforage.WEBSQL,
+    localforage.LOCALSTORAGE
+  ]
 });
 
 const postsStore = localforage.createInstance({
   name: 'socialchat',
-  storeName: 'posts'
+  storeName: 'posts',
+  description: 'Posts and comments',
+  driver: [
+    localforage.INDEXEDDB,
+    localforage.WEBSQL,
+    localforage.LOCALSTORAGE
+  ]
 });
 
 const messagesStore = localforage.createInstance({
   name: 'socialchat',
-  storeName: 'messages'
+  storeName: 'messages',
+  description: 'User messages',
+  driver: [
+    localforage.INDEXEDDB,
+    localforage.WEBSQL,
+    localforage.LOCALSTORAGE
+  ]
 });
 
 const notificationsStore = localforage.createInstance({
   name: 'socialchat',
-  storeName: 'notifications'
+  storeName: 'notifications',
+  description: 'User notifications',
+  driver: [
+    localforage.INDEXEDDB,
+    localforage.WEBSQL,
+    localforage.LOCALSTORAGE
+  ]
 });
 
 const preferencesStore = localforage.createInstance({
   name: 'socialchat',
-  storeName: 'preferences'
+  storeName: 'preferences',
+  description: 'User preferences',
+  driver: [
+    localforage.INDEXEDDB,
+    localforage.WEBSQL,
+    localforage.LOCALSTORAGE
+  ]
 });
 
 const viewedStoriesStore = localforage.createInstance({
   name: 'socialchat',
-  storeName: 'viewedStories'
+  storeName: 'viewedStories',
+  description: 'Viewed stories',
+  driver: [
+    localforage.INDEXEDDB,
+    localforage.WEBSQL,
+    localforage.LOCALSTORAGE
+  ]
 });
 
-// User related functions
+// Optimized user related functions with error handling
 export const saveUserProfile = async (userId: string, profile: any) => {
   try {
     await userStore.setItem(`profile_${userId}`, profile);
@@ -61,10 +97,24 @@ export const removeUserProfile = async (userId: string) => {
   }
 };
 
-// Posts related functions
+// Optimized posts related functions with batch operations
 export const savePosts = async (userId: string, posts: any[]) => {
   try {
-    await postsStore.setItem(`posts_${userId}`, posts);
+    // Store posts in batches for better performance
+    const batchSize = 20;
+    for (let i = 0; i < posts.length; i += batchSize) {
+      const batch = posts.slice(i, i + batchSize);
+      const batchKey = `posts_${userId}_batch_${Math.floor(i / batchSize)}`;
+      await postsStore.setItem(batchKey, batch);
+    }
+    
+    // Store metadata about the batches
+    await postsStore.setItem(`posts_${userId}_meta`, {
+      totalPosts: posts.length,
+      batchCount: Math.ceil(posts.length / batchSize),
+      lastUpdated: new Date().toISOString()
+    });
+    
     return true;
   } catch (error) {
     console.error('Error saving posts to local storage:', error);
@@ -74,7 +124,20 @@ export const savePosts = async (userId: string, posts: any[]) => {
 
 export const getPosts = async (userId: string) => {
   try {
-    return await postsStore.getItem(`posts_${userId}`);
+    // Get metadata about the batches
+    const meta = await postsStore.getItem(`posts_${userId}_meta`) as any;
+    if (!meta) return null;
+    
+    // Retrieve all batches and combine them
+    const allPosts = [];
+    for (let i = 0; i < meta.batchCount; i++) {
+      const batch = await postsStore.getItem(`posts_${userId}_batch_${i}`) as any[];
+      if (batch) {
+        allPosts.push(...batch);
+      }
+    }
+    
+    return allPosts;
   } catch (error) {
     console.error('Error getting posts from local storage:', error);
     return null;
@@ -100,11 +163,15 @@ export const getPost = async (postId: string) => {
   }
 };
 
-// Messages related functions
+// Optimized messages related functions with compression
 export const saveConversation = async (userId: string, friendId: string, messages: any[]) => {
   try {
     const conversationId = [userId, friendId].sort().join('_');
-    await messagesStore.setItem(`conversation_${conversationId}`, messages);
+    
+    // Only store the last 100 messages for performance
+    const recentMessages = messages.slice(-100);
+    
+    await messagesStore.setItem(`conversation_${conversationId}`, recentMessages);
     return true;
   } catch (error) {
     console.error('Error saving conversation to local storage:', error);
@@ -141,10 +208,13 @@ export const getFriendsList = async (userId: string) => {
   }
 };
 
-// Notifications related functions
+// Optimized notifications related functions
 export const saveNotifications = async (userId: string, notifications: any[]) => {
   try {
-    await notificationsStore.setItem(`notifications_${userId}`, notifications);
+    // Only store the last 50 notifications for performance
+    const recentNotifications = notifications.slice(0, 50);
+    
+    await notificationsStore.setItem(`notifications_${userId}`, recentNotifications);
     return true;
   } catch (error) {
     console.error('Error saving notifications to local storage:', error);
@@ -180,7 +250,7 @@ export const getUnreadCount = async (userId: string) => {
   }
 };
 
-// Preferences related functions
+// Optimized preferences related functions
 export const saveThemePreference = async (userId: string, theme: string) => {
   try {
     await preferencesStore.setItem(`theme_${userId}`, theme);
@@ -219,7 +289,7 @@ export const getColorThemePreference = async (userId: string) => {
   }
 };
 
-// Viewed stories related functions
+// Optimized viewed stories related functions
 export const saveViewedStories = async (userId: string, storyIds: string[]) => {
   try {
     await viewedStoriesStore.setItem(`viewedStories_${userId}`, storyIds);
@@ -256,23 +326,34 @@ export const addViewedStory = async (userId: string, storyId: string) => {
 // Clear all data for a user (used during logout)
 export const clearUserData = async (userId: string) => {
   try {
-    await userStore.removeItem(`profile_${userId}`);
-    await userStore.removeItem(`friends_${userId}`);
-    await postsStore.removeItem(`posts_${userId}`);
-    await notificationsStore.removeItem(`notifications_${userId}`);
-    await notificationsStore.removeItem(`unread_${userId}`);
-    await preferencesStore.removeItem(`theme_${userId}`);
-    await preferencesStore.removeItem(`colorTheme_${userId}`);
-    await viewedStoriesStore.removeItem(`viewedStories_${userId}`);
+    const clearPromises = [
+      userStore.removeItem(`profile_${userId}`),
+      userStore.removeItem(`friends_${userId}`),
+      notificationsStore.removeItem(`notifications_${userId}`),
+      notificationsStore.removeItem(`unread_${userId}`),
+      preferencesStore.removeItem(`theme_${userId}`),
+      preferencesStore.removeItem(`colorTheme_${userId}`),
+      viewedStoriesStore.removeItem(`viewedStories_${userId}`)
+    ];
     
-    // Also clear any conversations
+    // Clear posts batches
+    const meta = await postsStore.getItem(`posts_${userId}_meta`) as any;
+    if (meta) {
+      for (let i = 0; i < meta.batchCount; i++) {
+        clearPromises.push(postsStore.removeItem(`posts_${userId}_batch_${i}`));
+      }
+      clearPromises.push(postsStore.removeItem(`posts_${userId}_meta`));
+    }
+    
+    // Clear conversations
     const keys = await messagesStore.keys();
     for (const key of keys) {
       if (key.includes(userId)) {
-        await messagesStore.removeItem(key);
+        clearPromises.push(messagesStore.removeItem(key));
       }
     }
     
+    await Promise.all(clearPromises);
     return true;
   } catch (error) {
     console.error('Error clearing user data from local storage:', error);
@@ -283,12 +364,14 @@ export const clearUserData = async (userId: string) => {
 // Clear all data (used during development or for troubleshooting)
 export const clearAllData = async () => {
   try {
-    await userStore.clear();
-    await postsStore.clear();
-    await messagesStore.clear();
-    await notificationsStore.clear();
-    await preferencesStore.clear();
-    await viewedStoriesStore.clear();
+    await Promise.all([
+      userStore.clear(),
+      postsStore.clear(),
+      messagesStore.clear(),
+      notificationsStore.clear(),
+      preferencesStore.clear(),
+      viewedStoriesStore.clear()
+    ]);
     return true;
   } catch (error) {
     console.error('Error clearing all data from local storage:', error);

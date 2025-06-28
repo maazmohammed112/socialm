@@ -5,7 +5,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import './index.css';
 
-// Create a client
+// Create a client with performance optimizations
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -23,6 +23,7 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 
+// Use createRoot for React 18 concurrent features
 createRoot(rootElement).render(
   <StrictMode>
     <HelmetProvider>
