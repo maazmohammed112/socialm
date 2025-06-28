@@ -3,7 +3,7 @@ import { MobileHeader } from './MobileHeader';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Users, Bell, MessageSquare, User, Zap } from 'lucide-react';
+import { Home, Users, Bell, MessageSquare, User, Zap, Linkedin } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -123,6 +123,44 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </main>
         </div>
       </div>
+      
+      {/* Footer for all pages */}
+      <footer className="border-t py-3 bg-background text-center">
+        <div className="container mx-auto px-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <img src="/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png" alt="SocialChat Logo" className="h-5 w-auto" />
+              <span className="font-pixelated text-xs">© 2025 SocialChat</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <a 
+                href="https://www.linkedin.com/in/mohammed-maaz-a-0aa730217/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-pixelated text-xs text-social-green hover:underline"
+              >
+                <Linkedin className="h-3 w-3" />
+                Developer
+              </a>
+              
+              <a 
+                href="https://www.linkedin.com/company/socialchatmz/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-pixelated text-xs text-social-green hover:underline"
+              >
+                <Linkedin className="h-3 w-3" />
+                Company
+              </a>
+            </div>
+            
+            <div className="font-pixelated text-xs text-muted-foreground">
+              Developed by Mohammed Maaz A
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

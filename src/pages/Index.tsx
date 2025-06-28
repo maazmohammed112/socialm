@@ -2,12 +2,30 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { MessageCircle, User, Users, Heart, Linkedin } from 'lucide-react';
-import { SEO, seoConfig } from '@/utils/seo';
+import { Helmet } from 'react-helmet';
 
 export function Index() {
   return (
     <>
-      <SEO {...seoConfig.home} />
+      <Helmet>
+        <title>SocialChat - Real-time Social Messaging Platform | Connect with Friends</title>
+        <meta name="description" content="Join SocialChat - the ultimate real-time social messaging platform. Connect with friends, share posts and stories, chat instantly, build your social network." />
+        <meta name="keywords" content="social media, chat app, messaging platform, real-time chat, social network" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://socialchat.site/" />
+        <meta property="og:title" content="SocialChat - Real-time Social Messaging Platform | Connect with Friends" />
+        <meta property="og:description" content="Join SocialChat - the ultimate real-time social messaging platform. Connect with friends, share posts and stories, chat instantly, build your social network." />
+        <meta property="og:image" content="/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png" />
+        
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content="https://socialchat.site/" />
+        <meta property="twitter:title" content="SocialChat - Real-time Social Messaging Platform | Connect with Friends" />
+        <meta property="twitter:description" content="Join SocialChat - the ultimate real-time social messaging platform. Connect with friends, share posts and stories, chat instantly, build your social network." />
+        <meta property="twitter:image" content="/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png" />
+      </Helmet>
       <div className="min-h-screen flex flex-col">
         {/* Header */}
         <header className="border-b py-2 px-3 sm:py-4 sm:px-6 bg-background/95 backdrop-blur-sm sticky top-0 z-10">

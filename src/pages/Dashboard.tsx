@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemePrompt } from '@/components/dashboard/ThemePrompt';
-import { SEO, seoConfig } from '@/utils/seo';
+import { Helmet } from 'react-helmet';
 import { feedStorage } from '@/utils/localStorage';
 
 export function Dashboard() {
@@ -171,7 +171,25 @@ export function Dashboard() {
 
   return (
     <>
-      <SEO {...seoConfig.dashboard} />
+      <Helmet>
+        <title>SocialChat Dashboard | Your Social Feed</title>
+        <meta name="description" content="View your personalized feed, connect with friends, and share your thoughts on SocialChat." />
+        <meta name="keywords" content="social feed, dashboard, posts, social media timeline" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://socialchat.site/dashboard" />
+        <meta property="og:title" content="SocialChat Dashboard | Your Social Feed" />
+        <meta property="og:description" content="View your personalized feed, connect with friends, and share your thoughts on SocialChat." />
+        <meta property="og:image" content="/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png" />
+        
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content="https://socialchat.site/dashboard" />
+        <meta property="twitter:title" content="SocialChat Dashboard | Your Social Feed" />
+        <meta property="twitter:description" content="View your personalized feed, connect with friends, and share your thoughts on SocialChat." />
+        <meta property="twitter:image" content="/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png" />
+      </Helmet>
       <DashboardLayout>
         <div className="max-w-2xl mx-auto relative h-[calc(100vh-60px)]">
           {/* Stories Container - Fixed at top */}
