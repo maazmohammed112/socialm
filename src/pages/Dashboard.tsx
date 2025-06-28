@@ -10,8 +10,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemePrompt } from '@/components/dashboard/ThemePrompt';
-import { Helmet } from 'react-helmet';
-import { feedStorage } from '@/utils/localStorage';
 
 export function Dashboard() {
   const [postContent, setPostContent] = useState('');
@@ -142,10 +140,6 @@ export function Dashboard() {
       // Force feed refresh by updating key - this will trigger CommunityFeed to re-mount
       setFeedKey(prev => prev + 1);
       
-      // Clear local storage cache to ensure fresh data
-      feedStorage.setPosts([]);
-      feedStorage.setLastFetchTime();
-      
       toast({
         title: 'Success',
         description: 'Your post has been shared!'
@@ -170,112 +164,91 @@ export function Dashboard() {
   };
 
   return (
-    <>
-      <Helmet>
-        <title>SocialChat Dashboard | Your Social Feed</title>
-        <meta name="description" content="View your personalized feed, connect with friends, and share your thoughts on SocialChat." />
-        <meta name="keywords" content="social feed, dashboard, posts, social media timeline" />
+    <DashboardLayout>
+      <div className="max-w-2xl mx-auto relative h-[calc(100vh-60px)]">
+        {/* Stories Container - Fixed at top */}
+        <StoriesContainer />
         
-        {/* Open Graph / Facebook */}
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://socialchat.site/dashboard" />
-        <meta property="og:title" content="SocialChat Dashboard | Your Social Feed" />
-        <meta property="og:description" content="View your personalized feed, connect with friends, and share your thoughts on SocialChat." />
-        <meta property="og:image" content="/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png" />
+        {/* Theme Prompt */}
+        <ThemePrompt />
         
-        {/* Twitter */}
-        <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:url" content="https://socialchat.site/dashboard" />
-        <meta property="twitter:title" content="SocialChat Dashboard | Your Social Feed" />
-        <meta property="twitter:description" content="View your personalized feed, connect with friends, and share your thoughts on SocialChat." />
-        <meta property="twitter:image" content="/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png" />
-      </Helmet>
-      <DashboardLayout>
-        <div className="max-w-2xl mx-auto relative h-[calc(100vh-60px)]">
-          {/* Stories Container - Fixed at top */}
-          <StoriesContainer />
-          
-          {/* Theme Prompt */}
-          <ThemePrompt />
-          
-          {/* Scrollable Content Area */}
-          <ScrollArea ref={scrollAreaRef} className="h-[calc(100vh-180px)] px-2 scroll-smooth">
-            {/* Post Box */}
-            <Card ref={postBoxRef} className="mb-4 card-gradient animate-fade-in shadow-lg border-2 border-social-green/10 card-hover">
-              <CardContent className="p-4">
-                <div className="space-y-4">
-                  <Textarea
-                    placeholder="What's on your mind? Share your thoughts..."
-                    value={postContent}
-                    onChange={(e) => setPostContent(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="w-full min-h-[80px] max-h-[160px] font-pixelated text-sm resize-none focus:ring-2 focus:ring-social-green/20 transition-all duration-200"
-                    disabled={isPosting}
-                  />
-                  
-                  {/* Image Preview */}
-                  {imagePreview && (
-                    <div className="relative rounded-lg overflow-hidden border border-social-green/20">
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="max-h-60 w-full object-cover"
-                      />
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 h-7 w-7 rounded-full shadow-lg hover:scale-105 transition-transform"
-                        onClick={removeImage}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between gap-3 pt-1">
-                    <div className="flex items-center gap-3">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageSelect}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-9 font-pixelated text-xs hover:bg-social-green/5 transition-colors btn-hover-lift"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isPosting}
-                      >
-                        <ImageIcon className="h-4 w-4 mr-2" />
-                        Add Image
-                      </Button>
-                      <p className="text-xs text-muted-foreground font-pixelated hidden sm:block">
-                        Press Enter to post
-                      </p>
-                    </div>
+        {/* Scrollable Content Area */}
+        <ScrollArea ref={scrollAreaRef} className="h-[calc(100vh-180px)] px-2 scroll-smooth">
+          {/* Post Box */}
+          <Card ref={postBoxRef} className="mb-4 card-gradient animate-fade-in shadow-lg border-2 border-social-green/10 card-hover">
+            <CardContent className="p-4">
+              <div className="space-y-4">
+                <Textarea
+                  placeholder="What's on your mind? Share your thoughts..."
+                  value={postContent}
+                  onChange={(e) => setPostContent(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="w-full min-h-[80px] max-h-[160px] font-pixelated text-sm resize-none focus:ring-2 focus:ring-social-green/20 transition-all duration-200"
+                  disabled={isPosting}
+                />
+                
+                {/* Image Preview */}
+                {imagePreview && (
+                  <div className="relative rounded-lg overflow-hidden border border-social-green/20">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="max-h-60 w-full object-cover"
+                    />
                     <Button
-                      onClick={handlePost}
-                      disabled={(!postContent.trim() && !selectedImage) || isPosting}
-                      size="sm"
-                      className="bg-social-green hover:bg-social-light-green text-white font-pixelated h-9 px-4 btn-hover-lift transition-all duration-200"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-7 w-7 rounded-full shadow-lg hover:scale-105 transition-transform"
+                      onClick={removeImage}
                     >
-                      <Send className="h-4 w-4 mr-2" />
-                      {isPosting ? 'Posting...' : 'Share Post'}
+                      <X className="h-3 w-3" />
                     </Button>
                   </div>
+                )}
+                
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <div className="flex items-center gap-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 font-pixelated text-xs hover:bg-social-green/5 transition-colors btn-hover-lift"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isPosting}
+                    >
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      Add Image
+                    </Button>
+                    <p className="text-xs text-muted-foreground font-pixelated hidden sm:block">
+                      Press Enter to post
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handlePost}
+                    disabled={(!postContent.trim() && !selectedImage) || isPosting}
+                    size="sm"
+                    className="bg-social-green hover:bg-social-light-green text-white font-pixelated h-9 px-4 btn-hover-lift transition-all duration-200"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    {isPosting ? 'Posting...' : 'Share Post'}
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-            
-            {/* Feed with key-based refresh for seamless updates */}
-            <CommunityFeed key={feedKey} />
-          </ScrollArea>
-        </div>
-      </DashboardLayout>
-    </>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Feed with key-based refresh for seamless updates */}
+          <CommunityFeed key={feedKey} />
+        </ScrollArea>
+      </div>
+    </DashboardLayout>
   );
 }
 

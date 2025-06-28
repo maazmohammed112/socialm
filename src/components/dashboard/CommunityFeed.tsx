@@ -26,7 +26,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLocation } from 'react-router-dom';
-import { feedStorage } from '@/utils/localStorage';
 
 interface Post {
   id: string;
@@ -140,16 +139,6 @@ export function CommunityFeed() {
   // Optimized background fetch
   const fetchPostsInBackground = useCallback(async () => {
     try {
-      // Check if we have cached posts and they're not stale
-      const cachedPosts = feedStorage.getPosts();
-      const shouldRefetch = feedStorage.shouldRefetch(60000); // 1 minute cache
-      
-      if (cachedPosts.length > 0 && !shouldRefetch) {
-        console.log('Using cached posts data');
-        setPosts(cachedPosts);
-        return;
-      }
-
       const { data, error } = await supabase
         .from('posts')
         .select(`
@@ -224,11 +213,6 @@ export function CommunityFeed() {
       });
 
       setPosts(formattedPosts);
-      
-      // Cache the posts data
-      feedStorage.setPosts(formattedPosts);
-      feedStorage.setLastFetchTime();
-      
     } catch (error) {
       console.error('Error fetching likes and comments:', error);
       // Set posts without likes/comments if there's an error
@@ -245,21 +229,6 @@ export function CommunityFeed() {
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Check if we have cached posts
-      const cachedPosts = feedStorage.getPosts();
-      const shouldRefetch = feedStorage.shouldRefetch(60000); // 1 minute cache
-      
-      if (cachedPosts.length > 0 && !shouldRefetch) {
-        console.log('Using cached posts data');
-        setPosts(cachedPosts);
-        setLoading(false);
-        
-        // Still fetch in background to update cache
-        setTimeout(() => fetchPostsInBackground(), 1000);
-        return;
-      }
-      
       await fetchPostsInBackground();
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -313,20 +282,6 @@ export function CommunityFeed() {
               : p
           )
         );
-        
-        // Update cache
-        feedStorage.setPosts(posts.map(p =>
-          p.id === postId
-            ? {
-                ...p,
-                likes: p.likes.filter(like => like.id !== existingLike.id),
-                _count: {
-                  ...p._count,
-                  likes: (p._count?.likes || 0) - 1
-                }
-              }
-            : p
-        ));
       } else {
         // Like
         const { data, error } = await supabase
@@ -341,23 +296,20 @@ export function CommunityFeed() {
         if (error) throw error;
 
         // Optimistic update
-        const updatedPosts = posts.map(p =>
-          p.id === postId
-            ? {
-                ...p,
-                likes: [...p.likes, { id: data.id, user_id: currentUser.id }],
-                _count: {
-                  ...p._count,
-                  likes: (p._count?.likes || 0) + 1
+        setPosts(prevPosts =>
+          prevPosts.map(p =>
+            p.id === postId
+              ? {
+                  ...p,
+                  likes: [...p.likes, { id: data.id, user_id: currentUser.id }],
+                  _count: {
+                    ...p._count,
+                    likes: (p._count?.likes || 0) + 1
+                  }
                 }
-              }
-            : p
+              : p
+          )
         );
-        
-        setPosts(updatedPosts);
-        
-        // Update cache
-        feedStorage.setPosts(updatedPosts);
       }
     } catch (error) {
       console.error('Error toggling like:', error);
@@ -400,24 +352,21 @@ export function CommunityFeed() {
       if (error) throw error;
 
       // Update posts with new comment
-      const updatedPosts = posts.map(post =>
-        post.id === postId
-          ? {
-              ...post,
-              comments: [...post.comments, data],
-              _count: {
-                ...post._count,
-                likes: post._count?.likes || 0,
-                comments: (post._count?.comments || 0) + 1
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                comments: [...post.comments, data],
+                _count: {
+                  ...post._count,
+                  likes: post._count?.likes || 0,
+                  comments: (post._count?.comments || 0) + 1
+                }
               }
-            }
-          : post
+            : post
+        )
       );
-      
-      setPosts(updatedPosts);
-      
-      // Update cache
-      feedStorage.setPosts(updatedPosts);
 
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
       
@@ -449,16 +398,13 @@ export function CommunityFeed() {
 
       if (error) throw error;
 
-      const updatedPosts = posts.map(post =>
-        post.id === postId
-          ? { ...post, content: editContent.trim(), updated_at: new Date().toISOString() }
-          : post
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? { ...post, content: editContent.trim(), updated_at: new Date().toISOString() }
+            : post
+        )
       );
-      
-      setPosts(updatedPosts);
-      
-      // Update cache
-      feedStorage.setPosts(updatedPosts);
 
       setEditingPost(null);
       setEditContent('');
@@ -486,12 +432,7 @@ export function CommunityFeed() {
 
       if (error) throw error;
 
-      const filteredPosts = posts.filter(post => post.id !== postId);
-      setPosts(filteredPosts);
-      
-      // Update cache
-      feedStorage.setPosts(filteredPosts);
-      
+      setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
       setDeletePostId(null);
 
       toast({
@@ -518,25 +459,22 @@ export function CommunityFeed() {
       if (error) throw error;
 
       // Update posts to remove the deleted comment
-      const updatedPosts = posts.map(post =>
-        post.id === postId
-          ? {
-              ...post,
-              comments: post.comments.filter(comment => comment.id !== commentId),
-              _count: {
-                ...post._count,
-                likes: post._count?.likes || 0,
-                comments: Math.max(0, (post._count?.comments || 0) - 1)
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                comments: post.comments.filter(comment => comment.id !== commentId),
+                _count: {
+                  ...post._count,
+                  likes: post._count?.likes || 0,
+                  comments: Math.max(0, (post._count?.comments || 0) - 1)
+                }
               }
-            }
-          : post
+            : post
+        )
       );
-      
-      setPosts(updatedPosts);
-      
-      // Update cache
-      feedStorage.setPosts(updatedPosts);
-      
+
       setDeleteCommentId(null);
 
       toast({
@@ -798,7 +736,6 @@ export function CommunityFeed() {
                           alt="Post image"
                           className="w-full max-h-96 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => setSelectedImage(post.image_url)}
-                          loading="lazy"
                         />
                       </div>
                     )}

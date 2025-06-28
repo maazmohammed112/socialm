@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Bell, X, Smartphone, Monitor, Linkedin } from 'lucide-react';
+import { Bell, X, Smartphone, Monitor } from 'lucide-react';
 import { useOneSignalNotifications } from '@/hooks/use-onesignal-notifications';
 
 interface OneSignalNotificationBannerProps {
@@ -27,7 +27,7 @@ export function OneSignalNotificationBanner({ onDismiss }: OneSignalNotification
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3 flex-1">
           <div className="flex-shrink-0 mt-1">
-            <Bell className="h-4 w-4 text-social-green" />
+            <Bell className="h-5 w-5 text-social-green" />
           </div>
           <div className="flex-1">
             <h3 className="font-pixelated text-sm font-medium text-social-green mb-2">
@@ -93,19 +93,6 @@ export function OneSignalNotificationBanner({ onDismiss }: OneSignalNotification
         <p className="font-pixelated text-xs text-muted-foreground">
           ✨ <strong>Works on all platforms:</strong> Chrome, Firefox, Safari, Edge, and mobile browsers
         </p>
-        
-        {/* LinkedIn link */}
-        <div className="mt-2">
-          <a 
-            href="https://www.linkedin.com/company/socialchatmz/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 font-pixelated text-xs text-social-green hover:underline"
-          >
-            <Linkedin className="h-3 w-3" />
-            Follow SocialChat on LinkedIn for updates
-          </a>
-        </div>
       </div>
     </div>
   );
