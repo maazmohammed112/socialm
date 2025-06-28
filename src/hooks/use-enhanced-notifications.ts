@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useOneSignalNotifications } from '@/hooks/use-onesignal-notifications';
+import { getCachedData, setCachedData, STORAGE_KEYS, CachedNotification } from '@/lib/local-storage';
 
 interface NotificationData {
   id: string;
@@ -20,6 +21,7 @@ export function useEnhancedNotifications() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [hasShownSystemNotification, setHasShownSystemNotification] = useState(false);
+  const [hasShownFollowNotification, setHasShownFollowNotification] = useState(false);
   const { toast } = useToast();
   const { oneSignalUser, sendNotificationToUser } = useOneSignalNotifications();
 
@@ -51,6 +53,18 @@ export function useEnhancedNotifications() {
               sessionStorage.setItem(hasShownKey, 'true');
             }, 3000); // Show after 3 seconds
           }
+          
+          // Show follow notification (only once per session)
+          const hasShownFollowKey = `follow_notification_shown_${user.id}`;
+          const hasShownFollow = sessionStorage.getItem(hasShownFollowKey);
+          
+          if (!hasShownFollow && !hasShownFollowNotification) {
+            setTimeout(() => {
+              createFollowNotification(user.id);
+              setHasShownFollowNotification(true);
+              sessionStorage.setItem(hasShownFollowKey, 'true');
+            }, 10000); // Show after 10 seconds
+          }
         }
       } catch (error) {
         console.error('Error initializing notifications:', error);
@@ -70,7 +84,7 @@ export function useEnhancedNotifications() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [oneSignalUser.subscribed, hasShownSystemNotification]);
+  }, [oneSignalUser.subscribed, hasShownSystemNotification, hasShownFollowNotification]);
 
   // Update permission status when OneSignal status changes
   useEffect(() => {
@@ -128,9 +142,66 @@ export function useEnhancedNotifications() {
     }
   }, [toast]);
 
-  // Fetch notifications from database
+  // Create follow notification for LinkedIn
+  const createFollowNotification = useCallback(async (userId: string) => {
+    try {
+      // Check if notifications table exists
+      const { error: tableCheckError } = await supabase
+        .from('notifications')
+        .select('id')
+        .limit(1);
+      
+      if (tableCheckError) {
+        console.log('Notifications table does not exist yet, skipping follow notification');
+        return;
+      }
+      
+      const followNotification = {
+        user_id: userId,
+        type: 'system',
+        content: "🔗 Follow SocialChat on LinkedIn for updates and announcements! Connect with us at linkedin.com/company/socialchatmz",
+        read: false
+      };
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert(followNotification)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating follow notification:', error);
+        return;
+      }
+
+      // Add to local state
+      setNotifications(prev => [data, ...prev]);
+      setUnreadCount(prev => prev + 1);
+
+      // Show toast notification with highlight
+      toast({
+        title: '🔗 Connect with SocialChat',
+        description: "Follow our LinkedIn page for updates and announcements!",
+        duration: 8000,
+        className: 'border-l-4 border-l-blue-700 bg-blue-50 text-blue-900 shadow-lg',
+      });
+
+    } catch (error) {
+      console.error('Error creating follow notification:', error);
+    }
+  }, [toast]);
+
+  // Fetch notifications from database with cache support
   const fetchNotifications = useCallback(async (userId: string) => {
     try {
+      // Try to get from cache first
+      const cachedNotifications = getCachedData<CachedNotification>(STORAGE_KEYS.NOTIFICATIONS);
+      if (cachedNotifications.length > 0) {
+        setNotifications(cachedNotifications);
+        setUnreadCount(cachedNotifications.filter(n => !n.read).length);
+        return;
+      }
+      
       // Check if notifications table exists
       const { error: tableCheckError } = await supabase
         .from('notifications')
@@ -159,6 +230,11 @@ export function useEnhancedNotifications() {
         return;
       }
 
+      // Cache the results
+      if (data && data.length > 0) {
+        setCachedData(STORAGE_KEYS.NOTIFICATIONS, data, 2 * 60 * 1000); // 2 minutes cache
+      }
+      
       setNotifications(data || []);
       setUnreadCount(data?.filter(n => !n.read).length || 0);
     } catch (error) {
@@ -207,6 +283,13 @@ export function useEnhancedNotifications() {
           type,
           reference_id: referenceId
         });
+      }
+
+      // Update local cache
+      const cachedNotifications = getCachedData<CachedNotification>(STORAGE_KEYS.NOTIFICATIONS);
+      if (data) {
+        const updatedCache = [data, ...cachedNotifications];
+        setCachedData(STORAGE_KEYS.NOTIFICATIONS, updatedCache, 2 * 60 * 1000); // 2 minutes cache
       }
 
       return data;
@@ -267,10 +350,18 @@ export function useEnhancedNotifications() {
 
       if (error) throw error;
 
+      // Update local state
       setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
+      
+      // Update cache
+      const cachedNotifications = getCachedData<CachedNotification>(STORAGE_KEYS.NOTIFICATIONS);
+      const updatedCache = cachedNotifications.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
+      );
+      setCachedData(STORAGE_KEYS.NOTIFICATIONS, updatedCache, 2 * 60 * 1000);
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -300,8 +391,14 @@ export function useEnhancedNotifications() {
 
       if (error) throw error;
 
+      // Update local state
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
+      
+      // Update cache
+      const cachedNotifications = getCachedData<CachedNotification>(STORAGE_KEYS.NOTIFICATIONS);
+      const updatedCache = cachedNotifications.map(n => ({ ...n, read: true }));
+      setCachedData(STORAGE_KEYS.NOTIFICATIONS, updatedCache, 2 * 60 * 1000);
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
@@ -328,13 +425,20 @@ export function useEnhancedNotifications() {
 
       if (error) throw error;
 
+      // Update local state
+      const notificationToDelete = notifications.find(n => n.id === notificationId);
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
       
       // Update unread count if needed
-      const wasUnread = notifications.find(n => n.id === notificationId)?.read === false;
+      const wasUnread = notificationToDelete?.read === false;
       if (wasUnread) {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
+      
+      // Update cache
+      const cachedNotifications = getCachedData<CachedNotification>(STORAGE_KEYS.NOTIFICATIONS);
+      const updatedCache = cachedNotifications.filter(n => n.id !== notificationId);
+      setCachedData(STORAGE_KEYS.NOTIFICATIONS, updatedCache, 2 * 60 * 1000);
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
@@ -364,8 +468,12 @@ export function useEnhancedNotifications() {
 
       if (error) throw error;
 
+      // Update local state
       setNotifications([]);
       setUnreadCount(0);
+      
+      // Clear cache
+      setCachedData(STORAGE_KEYS.NOTIFICATIONS, [], 2 * 60 * 1000);
     } catch (error) {
       console.error('Error clearing notifications:', error);
     }
@@ -429,6 +537,12 @@ function getNotificationTitle(type: string): string {
       return 'New Comment';
     case 'system':
       return '🎨 Customize Your Experience';
+    case 'group_join_approved':
+      return 'Group Request Approved';
+    case 'group_join_rejected':
+      return 'Group Request Rejected';
+    case 'group_message':
+      return 'New Group Message';
     default:
       return 'Notification';
   }

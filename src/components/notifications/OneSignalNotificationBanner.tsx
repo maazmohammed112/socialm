@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Bell, X, Smartphone, Monitor } from 'lucide-react';
+import { Bell, X, Smartphone, Monitor, Linkedin } from 'lucide-react';
 import { useOneSignalNotifications } from '@/hooks/use-onesignal-notifications';
 
 interface OneSignalNotificationBannerProps {
@@ -93,6 +93,17 @@ export function OneSignalNotificationBanner({ onDismiss }: OneSignalNotification
         <p className="font-pixelated text-xs text-muted-foreground">
           ✨ <strong>Works on all platforms:</strong> Chrome, Firefox, Safari, Edge, and mobile browsers
         </p>
+        <div className="mt-2 flex items-center gap-1">
+          <Linkedin className="h-3 w-3 text-blue-600" />
+          <a 
+            href="https://www.linkedin.com/company/socialchatmz/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="font-pixelated text-xs text-blue-600 hover:underline"
+          >
+            Follow SocialChat on LinkedIn for updates!
+          </a>
+        </div>
       </div>
     </div>
   );

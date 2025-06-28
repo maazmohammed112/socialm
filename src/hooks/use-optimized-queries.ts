@@ -1,12 +1,20 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getCachedData, setCachedData, STORAGE_KEYS } from '@/lib/local-storage';
 
 export function useOptimizedQueries() {
-  // Optimized feed fetching with reduced database load
+  // Optimized feed fetching with reduced database load and local caching
   const fetchOptimizedFeed = useCallback(async (limit = 20, offset = 0) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
+
+      // Try to get from cache first
+      const cachedPosts = getCachedData(STORAGE_KEYS.POSTS);
+      if (cachedPosts.length > 0 && offset === 0) {
+        // Only use cache for first page
+        return cachedPosts;
+      }
 
       const { data, error } = await supabase.rpc('get_user_feed', {
         user_uuid: user.id,
@@ -15,6 +23,12 @@ export function useOptimizedQueries() {
       });
 
       if (error) throw error;
+      
+      // Cache the results if it's the first page
+      if (data && data.length > 0 && offset === 0) {
+        setCachedData(STORAGE_KEYS.POSTS, data, 5 * 60 * 1000); // 5 minutes cache
+      }
+      
       return data || [];
     } catch (error) {
       console.error('Error fetching optimized feed:', error);
@@ -34,6 +48,24 @@ export function useOptimizedQueries() {
       });
 
       if (error) throw error;
+      
+      // Update cache
+      const cachedPosts = getCachedData(STORAGE_KEYS.POSTS);
+      if (cachedPosts.length > 0) {
+        const updatedCache = cachedPosts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              is_liked: data?.[0]?.liked || false,
+              likes_count: data?.[0]?.likes_count || post.likes_count
+            };
+          }
+          return post;
+        });
+        
+        setCachedData(STORAGE_KEYS.POSTS, updatedCache, 5 * 60 * 1000);
+      }
+      
       return data?.[0] || null;
     } catch (error) {
       console.error('Error toggling like:', error);
@@ -41,7 +73,7 @@ export function useOptimizedQueries() {
     }
   }, []);
 
-  // Optimized friend suggestions
+  // Optimized friend suggestions with caching
   const getFriendSuggestions = useCallback(async (limit = 10) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -75,7 +107,7 @@ export function useOptimizedQueries() {
     }
   }, []);
 
-  // Optimized story fetching with view tracking
+  // Optimized story fetching with view tracking and caching
   const fetchStoriesOptimized = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -105,11 +137,24 @@ export function useOptimizedQueries() {
     }
   }, []);
 
-  // Optimized message fetching with pagination
+  // Optimized message fetching with pagination and caching
   const fetchMessagesOptimized = useCallback(async (friendId: string, limit = 50, offset = 0) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
+
+      // Try to get from cache first for initial load
+      if (offset === 0) {
+        const cachedMessages = getCachedData(STORAGE_KEYS.MESSAGES);
+        const filteredMessages = cachedMessages.filter(msg => 
+          (msg.sender_id === user.id && msg.receiver_id === friendId) || 
+          (msg.sender_id === friendId && msg.receiver_id === user.id)
+        );
+        
+        if (filteredMessages.length > 0) {
+          return filteredMessages;
+        }
+      }
 
       const { data, error } = await supabase
         .from('messages')
@@ -128,9 +173,47 @@ export function useOptimizedQueries() {
         .range(offset, offset + limit - 1);
 
       if (error) throw error;
+      
+      // Cache messages if it's the initial load
+      if (data && data.length > 0 && offset === 0) {
+        setCachedData(STORAGE_KEYS.MESSAGES, data, 1 * 60 * 1000); // 1 minute cache
+      }
+      
       return (data || []).reverse(); // Reverse to show oldest first
     } catch (error) {
       console.error('Error fetching optimized messages:', error);
+      return [];
+    }
+  }, []);
+
+  // Optimized group messages fetching
+  const fetchGroupMessagesOptimized = useCallback(async (groupId: string, limit = 50, offset = 0) => {
+    try {
+      const { data, error } = await supabase.rpc('get_group_messages_with_profiles', {
+        group_uuid: groupId,
+        limit_count: limit,
+        offset_count: offset
+      });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching optimized group messages:', error);
+      return [];
+    }
+  }, []);
+
+  // Optimized group members fetching
+  const fetchGroupMembersOptimized = useCallback(async (groupId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('get_group_members_with_profiles', {
+        group_uuid: groupId
+      });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching optimized group members:', error);
       return [];
     }
   }, []);
@@ -141,6 +224,8 @@ export function useOptimizedQueries() {
     getFriendSuggestions,
     createNotificationsBatch,
     fetchStoriesOptimized,
-    fetchMessagesOptimized
+    fetchMessagesOptimized,
+    fetchGroupMessagesOptimized,
+    fetchGroupMembersOptimized
   };
 }

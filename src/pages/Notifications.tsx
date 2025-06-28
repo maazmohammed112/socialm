@@ -23,7 +23,8 @@ import {
   UserX,
   Settings,
   Palette,
-  Sparkles
+  Sparkles,
+  Linkedin
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +40,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useEnhancedNotifications } from '@/hooks/use-enhanced-notifications';
+import { getCachedData, setCachedData, STORAGE_KEYS, CachedNotification } from '@/lib/local-storage';
 
 interface Notification {
   id: string;
@@ -51,242 +54,56 @@ interface Notification {
 }
 
 export function Notifications() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showNotificationBanner, setShowNotificationBanner] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { toast } = useToast();
   const { oneSignalUser, requestPermission, unsubscribe } = useOneSignalNotifications();
+  const { 
+    notifications, 
+    unreadCount, 
+    isGranted, 
+    isOnline, 
+    markAsRead, 
+    markAllAsRead, 
+    deleteNotification, 
+    clearAllNotifications, 
+    fetchNotifications 
+  } = useEnhancedNotifications();
 
-  const fetchNotifications = async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true);
-
+  useEffect(() => {
+    const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      setCurrentUser(user);
-
-      // Fetch notifications from database
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching notifications:', error);
-        // Create some sample notifications if none exist
-        await createSampleNotifications(user.id);
-        // Try fetching again
-        const { data: retryData } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false });
-        
-        setNotifications(retryData || []);
-      } else {
-        setNotifications(data || []);
+      if (user) {
+        setCurrentUser(user);
       }
-    } catch (error) {
-      console.error('Error in fetchNotifications:', error);
-      setNotifications([]);
-    } finally {
-      setLoading(false);
+    };
+    
+    getCurrentUser();
+    
+    // Check notification permission
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
     }
-  };
 
-  const createSampleNotifications = async (userId: string) => {
-    try {
-      const sampleNotifications = [
-        {
-          user_id: userId,
-          type: 'system',
-          content: "💡 Don't like the pixel font? No problem! Visit your Profile section to change themes and customize fonts & colors to your preference.",
-          read: false
-        },
-        {
-          user_id: userId,
-          type: 'like',
-          content: 'Owais liked your post',
-          read: false
-        },
-        {
-          user_id: userId,
-          type: 'comment',
-          content: 'raafi jamal commented on your post',
-          read: false
-        },
-        {
-          user_id: userId,
-          type: 'like',
-          content: 'Roohi Fida liked your post',
-          read: false
-        }
-      ];
-
-      for (const notification of sampleNotifications) {
-        await supabase
-          .from('notifications')
-          .insert(notification);
+    // Silent background sync every 30 seconds if online
+    const syncInterval = setInterval(() => {
+      if (isOnline) {
+        fetchNotifications();
       }
-    } catch (error) {
-      console.log('Sample notifications creation handled');
-    }
-  };
+    }, 30000);
 
-  const markAsRead = async (notificationId: string) => {
-    try {
-      // Optimistic update
-      setNotifications(prev =>
-        prev.map(notif =>
-          notif.id === notificationId ? { ...notif, read: true } : notif
-        )
-      );
+    return () => {
+      clearInterval(syncInterval);
+    };
+  }, [isOnline, fetchNotifications]);
 
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', notificationId);
-
-      if (error) {
-        console.error('Error marking notification as read:', error);
-        // Revert optimistic update on error
-        setNotifications(prev =>
-          prev.map(notif =>
-            notif.id === notificationId ? { ...notif, read: false } : notif
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      if (!currentUser) return;
-
-      // Optimistic update
-      const originalNotifications = [...notifications];
-      setNotifications(prev =>
-        prev.map(notif => ({ ...notif, read: true }))
-      );
-
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', currentUser.id)
-        .eq('read', false);
-
-      if (error) {
-        console.error('Error marking all as read:', error);
-        // Revert on error
-        setNotifications(originalNotifications);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to mark all notifications as read'
-        });
-      } else {
-        toast({
-          title: 'All notifications marked as read',
-          description: 'Your notifications have been updated',
-        });
-      }
-    } catch (error) {
-      console.error('Error marking all as read:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to mark all notifications as read'
-      });
-    }
-  };
-
-  const clearAllNotifications = async () => {
-    try {
-      if (!currentUser) return;
-
-      // Optimistic update
-      const originalNotifications = [...notifications];
-      setNotifications([]);
-      setShowClearDialog(false);
-
-      const { error } = await supabase
-        .from('notifications')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('user_id', currentUser.id)
-        .is('deleted_at', null);
-
-      if (error) {
-        console.error('Error clearing notifications:', error);
-        // Revert on error
-        setNotifications(originalNotifications);
-        setShowClearDialog(false);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to clear notifications'
-        });
-      } else {
-        toast({
-          title: 'All notifications cleared',
-          description: 'Your notifications have been cleared',
-        });
-      }
-    } catch (error) {
-      console.error('Error clearing notifications:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to clear notifications'
-      });
-    }
-  };
-
-  const deleteNotification = async (notificationId: string) => {
-    try {
-      // Optimistic update
-      const originalNotifications = [...notifications];
-      setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
-
-      const { error } = await supabase
-        .from('notifications')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', notificationId);
-
-      if (error) {
-        console.error('Error deleting notification:', error);
-        // Revert on error
-        setNotifications(originalNotifications);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to delete notification'
-        });
-      } else {
-        toast({
-          title: 'Notification deleted',
-          description: 'The notification has been removed',
-        });
-      }
-    } catch (error) {
-      console.error('Error deleting notification:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to delete notification'
-      });
-    }
-  };
+  useEffect(() => {
+    setLoading(false);
+  }, [notifications]);
 
   const handleNotificationToggle = async () => {
     if (oneSignalUser.subscribed) {
@@ -312,6 +129,12 @@ export function Notifications() {
         return <MessageSquare className="h-4 w-4 text-social-purple" />;
       case 'system':
         return <Sparkles className="h-4 w-4 text-blue-500" />;
+      case 'group_join_approved':
+        return <UserCheck className="h-4 w-4 text-social-green" />;
+      case 'group_join_rejected':
+        return <UserX className="h-4 w-4 text-destructive" />;
+      case 'group_message':
+        return <MessageSquare className="h-4 w-4 text-social-blue" />;
       default:
         return <Bell className="h-4 w-4 text-muted-foreground" />;
     }
@@ -333,79 +156,16 @@ export function Notifications() {
         return 'border-l-social-purple bg-social-purple/5';
       case 'system':
         return 'border-l-blue-500 bg-blue-50 animate-pulse';
+      case 'group_join_approved':
+        return 'border-l-social-green bg-social-green/5';
+      case 'group_join_rejected':
+        return 'border-l-destructive bg-destructive/5';
+      case 'group_message':
+        return 'border-l-social-blue bg-social-blue/5';
       default:
         return 'border-l-muted-foreground bg-muted/5';
     }
   };
-
-  useEffect(() => {
-    fetchNotifications();
-    
-    // Check notification permission
-    if ('Notification' in window) {
-      setNotificationPermission(Notification.permission);
-    }
-
-    // Listen for online/offline status
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Silent background sync every 30 seconds
-    const syncInterval = setInterval(() => {
-      if (isOnline) {
-        fetchNotifications(false);
-      }
-    }, 30000);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      clearInterval(syncInterval);
-    };
-  }, [isOnline]);
-
-  useEffect(() => {
-    if (currentUser) {
-      // Set up real-time subscription for notifications
-      const notificationsChannel = supabase
-        .channel('notifications-realtime')
-        .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'notifications',
-            filter: `user_id=eq.${currentUser.id}`
-          }, 
-          (payload) => {
-            console.log('Notification change:', payload);
-            if (payload.eventType === 'INSERT') {
-              const newNotification = payload.new as Notification;
-              setNotifications(prev => [newNotification, ...prev]);
-              
-              // Show browser notification if permission granted
-              if (notificationPermission === 'granted') {
-                new Notification('New Notification', {
-                  body: newNotification.content,
-                  icon: '/lovable-uploads/d215e62c-d97d-4600-a98e-68acbeba47d0.png'
-                });
-              }
-            } else {
-              fetchNotifications(false);
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(notificationsChannel);
-      };
-    }
-  }, [currentUser, notificationPermission]);
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   if (loading) {
     return (
@@ -554,8 +314,52 @@ export function Notifications() {
           </div>
         </div>
 
+        {/* LinkedIn Follow Banner */}
+        <div className="mx-4 mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-700 rounded-lg shadow-sm">
+          <div className="flex items-start gap-3">
+            <Linkedin className="h-5 w-5 text-blue-700 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-pixelated text-sm font-medium text-blue-800">
+                Connect with SocialChat
+              </p>
+              <p className="font-pixelated text-xs text-blue-700 mt-1 leading-relaxed">
+                Follow SocialChat on LinkedIn for updates, announcements, and new features!
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <a 
+                  href="https://www.linkedin.com/company/socialchatmz/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <Button
+                    size="sm"
+                    className="bg-blue-700 hover:bg-blue-800 text-white font-pixelated text-xs"
+                  >
+                    <Linkedin className="h-3 w-3 mr-1" />
+                    Company Page
+                  </Button>
+                </a>
+                <a 
+                  href="https://www.linkedin.com/in/mohammed-maaz-a-0aa730217/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="font-pixelated text-xs"
+                  >
+                    <User className="h-3 w-3 mr-1" />
+                    Developer Profile
+                  </Button>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Content */}
-        <ScrollArea className="h-[calc(100vh-240px)] p-4 scroll-container scroll-smooth">
+        <ScrollArea className="h-[calc(100vh-360px)] p-4 scroll-container scroll-smooth">
           {notifications.length > 0 ? (
             <div className="space-y-3">
               {notifications.map((notification) => (
@@ -682,6 +486,13 @@ export function Notifications() {
                   <div>
                     <p className="font-pixelated text-xs font-medium">Theme Customization</p>
                     <p className="font-pixelated text-xs text-muted-foreground">Change fonts, colors, and visual style in Profile</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-blue-700/10 rounded-lg">
+                  <Linkedin className="h-4 w-4 text-blue-700" />
+                  <div>
+                    <p className="font-pixelated text-xs font-medium">Connect with SocialChat</p>
+                    <p className="font-pixelated text-xs text-muted-foreground">Follow us on LinkedIn for updates and announcements</p>
                   </div>
                 </div>
               </div>

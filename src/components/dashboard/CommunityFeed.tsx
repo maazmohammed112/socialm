@@ -26,6 +26,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLocation } from 'react-router-dom';
+import { useOptimizedQueries } from '@/hooks/use-optimized-queries';
+import { getCachedData, setCachedData, STORAGE_KEYS } from '@/lib/local-storage';
 
 interface Post {
   id: string;
@@ -54,6 +56,7 @@ interface Post {
     likes: number;
     comments: number;
   };
+  is_liked?: boolean;
 }
 
 interface Comment {
@@ -87,6 +90,7 @@ export function CommunityFeed() {
   const feedRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { toast } = useToast();
+  const { fetchOptimizedFeed, toggleLikeOptimized } = useOptimizedQueries();
 
   const isHomePage = location.pathname === '/dashboard';
 
@@ -114,6 +118,16 @@ export function CommunityFeed() {
 
   const handleUserClick = async (userId: string, username: string) => {
     try {
+      // Try to get from cache first
+      const cachedProfiles = getCachedData(STORAGE_KEYS.PROFILES);
+      const cachedProfile = cachedProfiles.find(profile => profile.id === userId);
+      
+      if (cachedProfile) {
+        setSelectedUser(cachedProfile);
+        setShowUserDialog(true);
+        return;
+      }
+      
       const { data: userProfile, error } = await supabase
         .from('profiles')
         .select('id, name, username, avatar, created_at')
@@ -125,6 +139,11 @@ export function CommunityFeed() {
       if (userProfile) {
         setSelectedUser(userProfile);
         setShowUserDialog(true);
+        
+        // Cache the profile
+        const profilesCache = [...cachedProfiles];
+        profilesCache.push(userProfile);
+        setCachedData(STORAGE_KEYS.PROFILES, profilesCache, 30 * 60 * 1000); // 30 minutes
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -139,97 +158,33 @@ export function CommunityFeed() {
   // Optimized background fetch
   const fetchPostsInBackground = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          id,
-          content,
-          image_url,
-          created_at,
-          updated_at,
-          user_id,
-          profiles:user_id (
-            name,
-            username,
-            avatar
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-
-      await fetchLikesAndComments(data || []);
+      const data = await fetchOptimizedFeed(20, 0);
+      if (data.length > 0) {
+        setPosts(data);
+      }
     } catch (error) {
       console.error('Background fetch error:', error);
     }
-  }, []);
-
-  // Separate function to fetch likes and comments
-  const fetchLikesAndComments = async (postsData: any[]) => {
-    try {
-      const postIds = postsData.map(post => post.id);
-      
-      if (postIds.length === 0) {
-        setPosts([]);
-        return;
-      }
-
-      const [likesData, commentsData] = await Promise.all([
-        supabase
-          .from('likes')
-          .select('id, user_id, post_id')
-          .in('post_id', postIds),
-        supabase
-          .from('comments')
-          .select(`
-            id,
-            content,
-            created_at,
-            user_id,
-            post_id,
-            profiles:user_id (
-              name,
-              avatar
-            )
-          `)
-          .in('post_id', postIds)
-          .order('created_at', { ascending: true })
-      ]);
-
-      const formattedPosts = postsData.map(post => {
-        const postLikes = likesData.data?.filter(like => like.post_id === post.id) || [];
-        const postComments = commentsData.data?.filter(comment => comment.post_id === post.id) || [];
-
-        return {
-          ...post,
-          likes: postLikes,
-          comments: postComments,
-          _count: {
-            likes: postLikes.length,
-            comments: postComments.length
-          }
-        };
-      });
-
-      setPosts(formattedPosts);
-    } catch (error) {
-      console.error('Error fetching likes and comments:', error);
-      // Set posts without likes/comments if there's an error
-      setPosts(postsData.map(post => ({
-        ...post,
-        likes: [],
-        comments: [],
-        _count: { likes: 0, comments: 0 }
-      })));
-    }
-  };
+  }, [fetchOptimizedFeed]);
 
   // Initial fetch with loading state
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
-      await fetchPostsInBackground();
+      
+      // Try to get from cache first
+      const cachedPosts = getCachedData(STORAGE_KEYS.POSTS);
+      if (cachedPosts.length > 0) {
+        setPosts(cachedPosts);
+        setLoading(false);
+        
+        // Still fetch in background to update cache
+        fetchPostsInBackground();
+        return;
+      }
+      
+      const data = await fetchOptimizedFeed(20, 0);
+      setPosts(data);
     } catch (error) {
       console.error('Error fetching posts:', error);
       toast({
@@ -240,7 +195,7 @@ export function CommunityFeed() {
     } finally {
       setLoading(false);
     }
-  }, [fetchPostsInBackground, toast]);
+  }, [fetchOptimizedFeed, fetchPostsInBackground, toast]);
 
   const getCurrentUser = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -256,55 +211,56 @@ export function CommunityFeed() {
       const post = posts.find(p => p.id === postId);
       if (!post) return;
 
-      const existingLike = post.likes.find(like => like.user_id === currentUser.id);
-
-      if (existingLike) {
-        // Unlike
-        const { error } = await supabase
-          .from('likes')
-          .delete()
-          .eq('id', existingLike.id);
-
-        if (error) throw error;
-
-        // Optimistic update
-        setPosts(prevPosts =>
-          prevPosts.map(p =>
-            p.id === postId
-              ? {
-                  ...p,
-                  likes: p.likes.filter(like => like.id !== existingLike.id),
-                  _count: {
-                    ...p._count,
-                    likes: (p._count?.likes || 0) - 1
-                  }
+      // Optimistic update
+      const isCurrentlyLiked = post.is_liked || false;
+      const currentLikesCount = post._count?.likes || 0;
+      
+      setPosts(prevPosts =>
+        prevPosts.map(p =>
+          p.id === postId
+            ? {
+                ...p,
+                is_liked: !isCurrentlyLiked,
+                _count: {
+                  ...p._count,
+                  likes: isCurrentlyLiked ? currentLikesCount - 1 : currentLikesCount + 1
                 }
-              : p
-          )
-        );
-      } else {
-        // Like
-        const { data, error } = await supabase
-          .from('likes')
-          .insert({
-            post_id: postId,
-            user_id: currentUser.id
-          })
-          .select()
-          .single();
+              }
+            : p
+        )
+      );
 
-        if (error) throw error;
+      // Update cache
+      const cachedPosts = getCachedData(STORAGE_KEYS.POSTS);
+      if (cachedPosts.length > 0) {
+        const updatedCache = cachedPosts.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              is_liked: !isCurrentlyLiked,
+              likes_count: isCurrentlyLiked ? p.likes_count - 1 : p.likes_count + 1
+            };
+          }
+          return p;
+        });
+        
+        setCachedData(STORAGE_KEYS.POSTS, updatedCache, 5 * 60 * 1000); // 5 minutes
+      }
 
-        // Optimistic update
+      // Perform actual API call
+      const result = await toggleLikeOptimized(postId);
+      
+      if (!result) {
+        // Revert optimistic update if API call fails
         setPosts(prevPosts =>
           prevPosts.map(p =>
             p.id === postId
               ? {
                   ...p,
-                  likes: [...p.likes, { id: data.id, user_id: currentUser.id }],
+                  is_liked: isCurrentlyLiked,
                   _count: {
                     ...p._count,
-                    likes: (p._count?.likes || 0) + 1
+                    likes: currentLikesCount
                   }
                 }
               : p
@@ -368,6 +324,22 @@ export function CommunityFeed() {
         )
       );
 
+      // Update cache
+      const cachedPosts = getCachedData(STORAGE_KEYS.POSTS);
+      if (cachedPosts.length > 0) {
+        const updatedCache = cachedPosts.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              comments_count: (p.comments_count || 0) + 1
+            };
+          }
+          return p;
+        });
+        
+        setCachedData(STORAGE_KEYS.POSTS, updatedCache, 5 * 60 * 1000);
+      }
+
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
       
       // Auto-expand comments when user adds a comment
@@ -406,6 +378,23 @@ export function CommunityFeed() {
         )
       );
 
+      // Update cache
+      const cachedPosts = getCachedData(STORAGE_KEYS.POSTS);
+      if (cachedPosts.length > 0) {
+        const updatedCache = cachedPosts.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              content: editContent.trim(),
+              updated_at: new Date().toISOString()
+            };
+          }
+          return p;
+        });
+        
+        setCachedData(STORAGE_KEYS.POSTS, updatedCache, 5 * 60 * 1000);
+      }
+
       setEditingPost(null);
       setEditContent('');
 
@@ -433,6 +422,14 @@ export function CommunityFeed() {
       if (error) throw error;
 
       setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+      
+      // Update cache
+      const cachedPosts = getCachedData(STORAGE_KEYS.POSTS);
+      if (cachedPosts.length > 0) {
+        const updatedCache = cachedPosts.filter(p => p.id !== postId);
+        setCachedData(STORAGE_KEYS.POSTS, updatedCache, 5 * 60 * 1000);
+      }
+      
       setDeletePostId(null);
 
       toast({
@@ -474,6 +471,22 @@ export function CommunityFeed() {
             : post
         )
       );
+
+      // Update cache
+      const cachedPosts = getCachedData(STORAGE_KEYS.POSTS);
+      if (cachedPosts.length > 0) {
+        const updatedCache = cachedPosts.map(p => {
+          if (p.id === postId) {
+            return {
+              ...p,
+              comments_count: Math.max(0, (p.comments_count || 0) - 1)
+            };
+          }
+          return p;
+        });
+        
+        setCachedData(STORAGE_KEYS.POSTS, updatedCache, 5 * 60 * 1000);
+      }
 
       setDeleteCommentId(null);
 
@@ -613,7 +626,7 @@ export function CommunityFeed() {
         </Card>
       ) : (
         posts.map((post) => {
-          const isLiked = post.likes.some(like => like.user_id === currentUser?.id);
+          const isLiked = post.is_liked || false;
           const isOwner = post.user_id === currentUser?.id;
           const hasComments = post.comments && post.comments.length > 0;
           const commentsExpanded = expandedComments[post.id];
@@ -736,6 +749,7 @@ export function CommunityFeed() {
                           alt="Post image"
                           className="w-full max-h-96 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={() => setSelectedImage(post.image_url)}
+                          loading="lazy"
                         />
                       </div>
                     )}
