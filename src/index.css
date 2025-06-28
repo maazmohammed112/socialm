@@ -212,7 +212,6 @@
   html {
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    font-size: 13px;
   }
   
   body {
@@ -222,7 +221,7 @@
     max-width: 100%;
     position: fixed;
     height: 100vh;
-    font-size: 13px;
+    font-size: 14px;
     /* Enhanced scrolling */
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
@@ -237,21 +236,18 @@
   /* Default font for all themes except modern and crimson */
   body:not(.modern):not(.crimson) {
     font-family: 'Press Start 2P', cursive;
-    font-size: 13px;
   }
 
   /* Modern theme uses Inter font */
   .modern body,
   .modern * {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    font-size: 13px;
   }
   
   /* Crimson theme uses Poppins font */
   .crimson body,
   .crimson * {
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    font-size: 13px;
   }
   
   /* Allow text selection for inputs and textareas */
@@ -265,7 +261,6 @@
   
   h1, h2, h3, h4, h5, h6, button, label, p, span, div {
     /* Default pixelated font for non-modern themes */
-    font-size: 13px;
   }
 
   /* Modern theme overrides */
@@ -274,7 +269,6 @@
   .modern input, .modern textarea {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
     letter-spacing: normal !important;
-    font-size: 13px !important;
   }
   
   /* Crimson theme overrides */
@@ -283,14 +277,13 @@
   .crimson input, .crimson textarea {
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
     letter-spacing: normal !important;
-    font-size: 13px !important;
   }
 }
 
 .font-pixelated {
   font-family: 'Press Start 2P', cursive;
   letter-spacing: -0.02em;
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -298,7 +291,7 @@
 .modern .font-pixelated {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
   letter-spacing: normal !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   line-height: 1.5 !important;
   font-weight: 400;
 }
@@ -307,7 +300,7 @@
 .crimson .font-pixelated {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
   letter-spacing: normal !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   line-height: 1.5 !important;
   font-weight: 400;
 }
@@ -368,7 +361,6 @@
   max-width: 80%;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  font-size: 13px;
 }
 
 .message-bubble-received {
@@ -376,13 +368,12 @@
   max-width: 80%;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  font-size: 13px;
 }
 
 /* Modern theme message bubbles */
 .modern .message-bubble-sent,
 .modern .message-bubble-received {
-  font-size: 13px !important;
+  font-size: 14px !important;
   line-height: 1.4 !important;
   font-weight: 400 !important;
 }
@@ -390,7 +381,7 @@
 /* Crimson theme message bubbles */
 .crimson .message-bubble-sent {
   @apply bg-red-600 text-white;
-  font-size: 13px !important;
+  font-size: 14px !important;
   line-height: 1.4 !important;
   font-weight: 400 !important;
   border-radius: 1rem !important;
@@ -399,7 +390,7 @@
 
 .crimson .message-bubble-received {
   @apply bg-gray-100;
-  font-size: 13px !important;
+  font-size: 14px !important;
   line-height: 1.4 !important;
   font-weight: 400 !important;
   border-radius: 1rem !important;
@@ -413,18 +404,18 @@
 
 .nav-tab {
   @apply text-muted-foreground border-b-2 border-transparent transition-all duration-200 data-[state=active]:border-social-green data-[state=active]:text-social-green data-[state=active]:bg-transparent font-pixelated text-xs;
-  font-size: 13px;
+  font-size: 10px;
 }
 
 /* Modern theme navigation */
 .modern .nav-tab {
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
 }
 
 /* Crimson theme navigation */
 .crimson .nav-tab {
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
 }
 
@@ -438,7 +429,7 @@
     position: fixed;
     height: 100vh;
     overflow: hidden;
-    font-size: 13px;
+    font-size: 11px;
     /* Enhanced mobile scrolling */
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
@@ -453,16 +444,16 @@
 
   /* Modern theme mobile adjustments */
   .modern body {
-    font-size: 13px;
+    font-size: 14px;
   }
   
   /* Crimson theme mobile adjustments */
   .crimson body {
-    font-size: 13px;
+    font-size: 14px;
   }
   
   .font-pixelated {
-    font-size: 13px;
+    font-size: 10px;
     line-height: 1.3;
   }
 
@@ -480,7 +471,7 @@
   
   .message-bubble-sent, .message-bubble-received {
     max-width: 75%;
-    font-size: 13px;
+    font-size: 10px;
     padding: 6px 8px;
   }
 
@@ -506,34 +497,34 @@
   }
   
   /* Mobile text scaling for pixelated font */
-  .text-4xl { font-size: 13px; line-height: 1.3; }
+  .text-4xl { font-size: 14px; line-height: 1.3; }
   .text-3xl { font-size: 13px; line-height: 1.3; }
-  .text-2xl { font-size: 13px; line-height: 1.3; }
-  .text-xl { font-size: 13px; line-height: 1.3; }
-  .text-lg { font-size: 13px; line-height: 1.3; }
-  .text-base { font-size: 13px; line-height: 1.3; }
-  .text-sm { font-size: 13px; line-height: 1.2; }
-  .text-xs { font-size: 13px; line-height: 1.2; }
+  .text-2xl { font-size: 12px; line-height: 1.3; }
+  .text-xl { font-size: 11px; line-height: 1.3; }
+  .text-lg { font-size: 10px; line-height: 1.3; }
+  .text-base { font-size: 10px; line-height: 1.3; }
+  .text-sm { font-size: 9px; line-height: 1.2; }
+  .text-xs { font-size: 8px; line-height: 1.2; }
 
   /* Modern theme mobile text scaling */
-  .modern .text-4xl { font-size: 13px !important; line-height: 1.2 !important; }
-  .modern .text-3xl { font-size: 13px !important; line-height: 1.2 !important; }
-  .modern .text-2xl { font-size: 13px !important; line-height: 1.3 !important; }
-  .modern .text-xl { font-size: 13px !important; line-height: 1.3 !important; }
-  .modern .text-lg { font-size: 13px !important; line-height: 1.4 !important; }
-  .modern .text-base { font-size: 13px !important; line-height: 1.4 !important; }
+  .modern .text-4xl { font-size: 24px !important; line-height: 1.2 !important; }
+  .modern .text-3xl { font-size: 20px !important; line-height: 1.2 !important; }
+  .modern .text-2xl { font-size: 18px !important; line-height: 1.3 !important; }
+  .modern .text-xl { font-size: 16px !important; line-height: 1.3 !important; }
+  .modern .text-lg { font-size: 15px !important; line-height: 1.4 !important; }
+  .modern .text-base { font-size: 14px !important; line-height: 1.4 !important; }
   .modern .text-sm { font-size: 13px !important; line-height: 1.4 !important; }
-  .modern .text-xs { font-size: 13px !important; line-height: 1.3 !important; }
+  .modern .text-xs { font-size: 12px !important; line-height: 1.3 !important; }
   
   /* Crimson theme mobile text scaling */
-  .crimson .text-4xl { font-size: 13px !important; line-height: 1.2 !important; }
-  .crimson .text-3xl { font-size: 13px !important; line-height: 1.2 !important; }
-  .crimson .text-2xl { font-size: 13px !important; line-height: 1.3 !important; }
-  .crimson .text-xl { font-size: 13px !important; line-height: 1.3 !important; }
-  .crimson .text-lg { font-size: 13px !important; line-height: 1.4 !important; }
-  .crimson .text-base { font-size: 13px !important; line-height: 1.4 !important; }
+  .crimson .text-4xl { font-size: 24px !important; line-height: 1.2 !important; }
+  .crimson .text-3xl { font-size: 20px !important; line-height: 1.2 !important; }
+  .crimson .text-2xl { font-size: 18px !important; line-height: 1.3 !important; }
+  .crimson .text-xl { font-size: 16px !important; line-height: 1.3 !important; }
+  .crimson .text-lg { font-size: 15px !important; line-height: 1.4 !important; }
+  .crimson .text-base { font-size: 14px !important; line-height: 1.4 !important; }
   .crimson .text-sm { font-size: 13px !important; line-height: 1.4 !important; }
-  .crimson .text-xs { font-size: 13px !important; line-height: 1.3 !important; }
+  .crimson .text-xs { font-size: 12px !important; line-height: 1.3 !important; }
   
   /* Compact spacing */
   .p-6 { padding: 0.75rem; }
@@ -562,7 +553,7 @@
   
   /* Fix overlapping text */
   textarea, input {
-    font-size: 13px !important;
+    font-size: 10px !important;
     padding: 6px 8px !important;
     touch-action: manipulation;
   }
@@ -570,14 +561,14 @@
   /* Modern theme mobile inputs */
   .modern textarea,
   .modern input {
-    font-size: 13px !important;
+    font-size: 14px !important;
     padding: 8px 12px !important;
   }
   
   /* Crimson theme mobile inputs */
   .crimson textarea,
   .crimson input {
-    font-size: 13px !important;
+    font-size: 14px !important;
     padding: 8px 12px !important;
   }
   
@@ -702,17 +693,17 @@
 /* Development banner */
 .dev-banner {
   @apply bg-yellow-100 text-yellow-800 p-1 text-center font-pixelated;
-  font-size: 13px;
+  font-size: 8px;
 }
 
 .modern .dev-banner {
-  font-size: 13px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
 }
 
 .crimson .dev-banner {
   @apply bg-red-50 text-red-800;
-  font-size: 13px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
 }
 
@@ -744,16 +735,6 @@
     right: 0 !important;
     z-index: 50 !important;
   }
-  
-  /* Adjust footer for mobile */
-  footer {
-    padding-bottom: env(safe-area-inset-bottom, 1rem) !important;
-  }
-  
-  /* Improve mobile grid layout */
-  .grid-cols-1 {
-    grid-template-columns: 1fr !important;
-  }
 }
 
 /* Prevent text overflow */
@@ -772,7 +753,6 @@
 textarea, input {
   word-wrap: break-word;
   overflow-wrap: break-word;
-  font-size: 13px;
 }
 
 /* Enhanced scrollbar visibility with smooth scrolling */
@@ -854,15 +834,6 @@ textarea, input {
   button, a, [role="button"] {
     touch-action: manipulation !important;
   }
-  
-  /* Improve mobile footer layout */
-  footer .grid {
-    gap: 1rem !important;
-  }
-  
-  footer .space-y-6 {
-    margin-bottom: 1rem !important;
-  }
 }
 
 /* Enhanced grey circle for unread indicator */
@@ -889,7 +860,6 @@ textarea, input {
 html, body, #root {
   scroll-behavior: smooth !important;
   -webkit-overflow-scrolling: touch !important;
-  font-size: 13px;
 }
 
 /* Smooth scrolling for all scrollable elements */
@@ -1137,38 +1107,4 @@ textarea:focus-visible {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-}
-
-/* Footer specific styles */
-.footer-link {
-  @apply font-pixelated text-muted-foreground hover:text-social-green transition-colors;
-  font-size: 13px;
-}
-
-.footer-heading {
-  @apply font-pixelated text-sm font-medium;
-  font-size: 13px;
-}
-
-.footer-text {
-  @apply font-pixelated text-muted-foreground;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-/* Social media icons in footer */
-.social-icon {
-  @apply inline-flex items-center justify-center h-8 w-8 rounded-full bg-social-green/10 text-social-green hover:bg-social-green/20 transition-colors;
-}
-
-/* Responsive adjustments for footer */
-@media (max-width: 768px) {
-  .footer-grid {
-    grid-template-columns: 1fr !important;
-    gap: 1.5rem !important;
-  }
-  
-  .footer-section {
-    text-align: center !important;
-  }
 }
