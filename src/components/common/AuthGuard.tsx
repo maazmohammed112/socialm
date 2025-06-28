@@ -12,9 +12,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let mounted = true;
+    const MAX_RETRIES = 3;
 
     const initializeAuth = async () => {
       try {
@@ -23,7 +25,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
         
         if (sessionError) {
           console.error('Session error:', sessionError);
-          setError('Authentication error occurred');
+          if (mounted) {
+            setError('Authentication error occurred');
+            setLoading(false);
+          }
+          return;
         }
 
         if (mounted) {
@@ -33,8 +39,15 @@ export function AuthGuard({ children }: AuthGuardProps) {
       } catch (err) {
         console.error('Auth initialization error:', err);
         if (mounted) {
-          setError('Failed to initialize authentication');
-          setLoading(false);
+          if (retryCount < MAX_RETRIES) {
+            // Retry after a delay
+            setTimeout(() => {
+              setRetryCount(prev => prev + 1);
+            }, 1000);
+          } else {
+            setError('Failed to initialize authentication');
+            setLoading(false);
+          }
         }
       }
     };
@@ -42,12 +55,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
     // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event);
         if (mounted) {
           setSession(session);
           setError(null);
-          if (!loading) {
-            setLoading(false);
-          }
+          setLoading(false);
         }
       }
     );
@@ -58,7 +70,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [retryCount]);
 
   if (loading) {
     return (
@@ -78,12 +90,20 @@ export function AuthGuard({ children }: AuthGuardProps) {
           <div className="text-red-500 text-xl">⚠️</div>
           <h2 className="text-lg font-semibold text-red-700">Authentication Error</h2>
           <p className="text-sm text-red-600">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-          >
-            Retry
-          </button>
+          <div className="flex gap-2 justify-center">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            >
+              Retry
+            </button>
+            <button 
+              onClick={() => window.location.href = '/login'} 
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              Go to Login
+            </button>
+          </div>
         </div>
       </div>
     );

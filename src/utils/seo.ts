@@ -62,29 +62,6 @@ export function SEO(props: SEOData) {
       
       {/* Canonical URL */}
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
-      
-      {/* Structured Data */}
-      <script type="application/ld+json">
-        {JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'WebApplication',
-          name: 'SocialChat',
-          description: description,
-          url: canonicalUrl || 'https://socialchat.site',
-          applicationCategory: 'SocialNetworkingApplication',
-          operatingSystem: 'Web Browser',
-          offers: {
-            '@type': 'Offer',
-            price: '0',
-            priceCurrency: 'USD'
-          },
-          author: {
-            '@type': 'Person',
-            name: 'Mohammed Maaz A',
-            url: 'https://www.linkedin.com/in/mohammed-maaz-a-0aa730217/'
-          }
-        })}
-      </script>
     </Helmet>
   );
 }
@@ -95,45 +72,45 @@ export function updateSEO(data: SEOData) {
   document.title = data.title;
 
   // Update or create meta tags
-  updateMetaTag('description', data.description);
+  updateMetaTag("description", data.description);
   
   if (data.keywords) {
-    updateMetaTag('keywords', data.keywords.join(', '));
+    updateMetaTag("keywords", data.keywords.join(', '));
   }
 
   // Open Graph tags
-  updateMetaTag('og:title', data.title, 'property');
-  updateMetaTag('og:description', data.description, 'property');
-  updateMetaTag('og:type', data.type || 'website', 'property');
+  updateMetaTag("og:title", data.title, "property");
+  updateMetaTag("og:description", data.description, "property");
+  updateMetaTag("og:type", data.type || 'website', "property");
   
   if (data.ogImage) {
-    updateMetaTag('og:image', data.ogImage, 'property');
+    updateMetaTag("og:image", data.ogImage, "property");
   }
   
   if (data.canonicalUrl) {
-    updateMetaTag('og:url', data.canonicalUrl, 'property');
+    updateMetaTag("og:url", data.canonicalUrl, "property");
     updateCanonicalLink(data.canonicalUrl);
   }
 
   // Twitter Card tags
-  updateMetaTag('twitter:card', 'summary_large_image');
-  updateMetaTag('twitter:title', data.title);
-  updateMetaTag('twitter:description', data.description);
+  updateMetaTag("twitter:card", "summary_large_image");
+  updateMetaTag("twitter:title", data.title);
+  updateMetaTag("twitter:description", data.description);
   
   if (data.ogImage) {
-    updateMetaTag('twitter:image', data.ogImage);
+    updateMetaTag("twitter:image", data.ogImage);
   }
 
   // Article specific tags
   if (data.type === 'article') {
     if (data.author) {
-      updateMetaTag('article:author', data.author, 'property');
+      updateMetaTag("article:author", data.author, "property");
     }
     if (data.publishedTime) {
-      updateMetaTag('article:published_time', data.publishedTime, 'property');
+      updateMetaTag("article:published_time", data.publishedTime, "property");
     }
     if (data.modifiedTime) {
-      updateMetaTag('article:modified_time', data.modifiedTime, 'property');
+      updateMetaTag("article:modified_time", data.modifiedTime, "property");
     }
   }
 }
@@ -141,8 +118,8 @@ export function updateSEO(data: SEOData) {
 function updateMetaTag(name: string, content: string, attributeType: 'name' | 'property' = 'name') {
   // Use explicit string literals for the selector to help SWC transformer
   const selector = attributeType === 'property' 
-    ? `meta[property="${name}"]` 
-    : `meta[name="${name}"]`;
+    ? "meta[property=\"" + name + "\"]" 
+    : "meta[name=\"" + name + "\"]";
   
   let element = document.querySelector(selector) as HTMLMetaElement;
   
@@ -337,16 +314,3 @@ export const pageSEO = {
     canonicalUrl: 'https://socialchat.site/404'
   }
 };
-
-// Apply SEO for specific pages
-export function applySEO(page: keyof typeof pageSEO, customData?: Partial<SEOData>) {
-  const seoData = { ...pageSEO[page], ...customData };
-  updateSEO(seoData);
-  
-  // Generate structured data for the application
-  generateStructuredData('WebApplication', {
-    name: 'SocialChat',
-    description: seoData.description,
-    url: seoData.canonicalUrl
-  });
-}
