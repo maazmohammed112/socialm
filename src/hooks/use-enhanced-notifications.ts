@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useOneSignalNotifications } from '@/hooks/use-onesignal-notifications';
+import { saveNotifications, getNotifications, saveUnreadCount, getUnreadCount } from '@/utils/localStorage';
 
 interface NotificationData {
   id: string;
@@ -20,6 +21,7 @@ export function useEnhancedNotifications() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [hasShownSystemNotification, setHasShownSystemNotification] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { oneSignalUser, sendNotificationToUser } = useOneSignalNotifications();
 
@@ -37,7 +39,17 @@ export function useEnhancedNotifications() {
             setIsGranted(Notification.permission === 'granted' || oneSignalUser.subscribed);
           }
           
-          // Load initial notifications
+          // Try to load notifications from local storage first
+          const cachedNotifications = await getNotifications(user.id);
+          const cachedUnreadCount = await getUnreadCount(user.id);
+          
+          if (cachedNotifications) {
+            setNotifications(cachedNotifications);
+            setUnreadCount(cachedUnreadCount || 0);
+            setIsLoading(false);
+          }
+          
+          // Then load from database
           await fetchNotifications(user.id);
 
           // Show system notification about theme customization (only once per session)
@@ -51,9 +63,12 @@ export function useEnhancedNotifications() {
               sessionStorage.setItem(hasShownKey, 'true');
             }, 3000); // Show after 3 seconds
           }
+        } else {
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('Error initializing notifications:', error);
+        setIsLoading(false);
       }
     };
 
@@ -114,6 +129,11 @@ export function useEnhancedNotifications() {
       // Add to local state
       setNotifications(prev => [data, ...prev]);
       setUnreadCount(prev => prev + 1);
+      
+      // Save to local storage
+      const updatedNotifications = [data, ...notifications];
+      await saveNotifications(userId, updatedNotifications);
+      await saveUnreadCount(userId, unreadCount + 1);
 
       // Show toast notification with highlight
       toast({
@@ -126,11 +146,13 @@ export function useEnhancedNotifications() {
     } catch (error) {
       console.error('Error creating system notification:', error);
     }
-  }, [toast]);
+  }, [toast, notifications, unreadCount]);
 
   // Fetch notifications from database
   const fetchNotifications = useCallback(async (userId: string) => {
     try {
+      setIsLoading(true);
+      
       // Check if notifications table exists
       const { error: tableCheckError } = await supabase
         .from('notifications')
@@ -141,6 +163,7 @@ export function useEnhancedNotifications() {
         console.log('Notifications table does not exist yet, using empty array');
         setNotifications([]);
         setUnreadCount(0);
+        setIsLoading(false);
         return;
       }
       
@@ -149,22 +172,26 @@ export function useEnhancedNotifications() {
         .select('*')
         .eq('user_id', userId)
         .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching notifications:', error);
-        setNotifications([]);
-        setUnreadCount(0);
+        setIsLoading(false);
         return;
       }
 
       setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.read).length || 0);
+      const newUnreadCount = data?.filter(n => !n.read).length || 0;
+      setUnreadCount(newUnreadCount);
+      
+      // Save to local storage for offline access
+      await saveNotifications(userId, data || []);
+      await saveUnreadCount(userId, newUnreadCount);
+      
+      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      setNotifications([]);
-      setUnreadCount(0);
+      setIsLoading(false);
     }
   }, []);
 
@@ -201,6 +228,15 @@ export function useEnhancedNotifications() {
 
       if (error) throw error;
 
+      // Update local state
+      setNotifications(prev => [data, ...prev]);
+      setUnreadCount(prev => prev + 1);
+      
+      // Save to local storage
+      const updatedNotifications = [data, ...notifications];
+      await saveNotifications(userId, updatedNotifications);
+      await saveUnreadCount(userId, unreadCount + 1);
+
       // Send OneSignal notification if user is subscribed
       if (oneSignalUser.subscribed) {
         await sendNotificationToUser(userId, getNotificationTitle(type), content, {
@@ -214,7 +250,7 @@ export function useEnhancedNotifications() {
       console.error('Error creating notification:', error);
       return null;
     }
-  }, [oneSignalUser.subscribed, sendNotificationToUser]);
+  }, [oneSignalUser.subscribed, sendNotificationToUser, notifications, unreadCount]);
 
   // Send browser notification (fallback)
   const sendBrowserNotification = useCallback((title: string, options?: NotificationOptions) => {
@@ -267,14 +303,23 @@ export function useEnhancedNotifications() {
 
       if (error) throw error;
 
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      // Update local state
+      const updatedNotifications = notifications.map(n => 
+        n.id === notificationId ? { ...n, read: true } : n
       );
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setNotifications(updatedNotifications);
+      const newUnreadCount = Math.max(0, unreadCount - 1);
+      setUnreadCount(newUnreadCount);
+      
+      // Save to local storage
+      if (currentUser) {
+        await saveNotifications(currentUser.id, updatedNotifications);
+        await saveUnreadCount(currentUser.id, newUnreadCount);
+      }
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
-  }, []);
+  }, [notifications, unreadCount, currentUser]);
 
   // Mark all as read
   const markAllAsRead = useCallback(async () => {
@@ -300,12 +345,18 @@ export function useEnhancedNotifications() {
 
       if (error) throw error;
 
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      // Update local state
+      const updatedNotifications = notifications.map(n => ({ ...n, read: true }));
+      setNotifications(updatedNotifications);
       setUnreadCount(0);
+      
+      // Save to local storage
+      await saveNotifications(currentUser.id, updatedNotifications);
+      await saveUnreadCount(currentUser.id, 0);
     } catch (error) {
       console.error('Error marking all as read:', error);
     }
-  }, [currentUser]);
+  }, [currentUser, notifications]);
 
   // Delete notification
   const deleteNotification = useCallback(async (notificationId: string) => {
@@ -328,17 +379,30 @@ export function useEnhancedNotifications() {
 
       if (error) throw error;
 
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      // Update local state
+      const wasUnread = notifications.find(n => n.id === notificationId)?.read === false;
+      const updatedNotifications = notifications.filter(n => n.id !== notificationId);
+      setNotifications(updatedNotifications);
       
       // Update unread count if needed
-      const wasUnread = notifications.find(n => n.id === notificationId)?.read === false;
       if (wasUnread) {
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        const newUnreadCount = Math.max(0, unreadCount - 1);
+        setUnreadCount(newUnreadCount);
+        
+        // Save to local storage
+        if (currentUser) {
+          await saveUnreadCount(currentUser.id, newUnreadCount);
+        }
+      }
+      
+      // Save to local storage
+      if (currentUser) {
+        await saveNotifications(currentUser.id, updatedNotifications);
       }
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
-  }, [notifications]);
+  }, [notifications, unreadCount, currentUser]);
 
   // Clear all notifications
   const clearAllNotifications = useCallback(async () => {
@@ -364,8 +428,13 @@ export function useEnhancedNotifications() {
 
       if (error) throw error;
 
+      // Update local state
       setNotifications([]);
       setUnreadCount(0);
+      
+      // Save to local storage
+      await saveNotifications(currentUser.id, []);
+      await saveUnreadCount(currentUser.id, 0);
     } catch (error) {
       console.error('Error clearing notifications:', error);
     }
@@ -403,6 +472,7 @@ export function useEnhancedNotifications() {
     unreadCount,
     isGranted: isGranted || oneSignalUser.subscribed,
     isOnline,
+    isLoading,
     markAsRead,
     markAllAsRead,
     deleteNotification,

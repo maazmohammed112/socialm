@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
+import { saveThemePreference, saveColorThemePreference, getThemePreference, getColorThemePreference } from '@/utils/localStorage';
 
 type Theme = 'light' | 'dark' | 'win95' | 'modern' | 'crimson';
 type ColorTheme = 'green' | 'blue' | 'red' | 'orange' | 'purple';
@@ -54,6 +55,13 @@ const customStorage = {
               hasShownThemePrompt: false
             } 
           }));
+          
+          // Also save to localforage for offline access
+          if (user.id) {
+            await saveThemePreference(user.id, data.theme_preference);
+            await saveColorThemePreference(user.id, data.color_theme || 'green');
+          }
+          
           return JSON.stringify({ 
             state: { 
               theme: data.theme_preference,
@@ -80,6 +88,10 @@ const customStorage = {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { theme, colorTheme } = JSON.parse(value).state;
+        
+        // Save to localforage for offline access
+        await saveThemePreference(user.id, theme);
+        await saveColorThemePreference(user.id, colorTheme);
         
         // Check if the columns exist first
         const { data: columnsExist, error: columnsError } = await supabase.rpc('check_theme_columns_exist');
@@ -118,6 +130,16 @@ export const useTheme = create<ThemeStore>()(
         root.classList.remove('light', 'dark', 'win95', 'modern', 'crimson');
         root.classList.add(theme);
         set({ theme });
+        
+        // Also update in localforage
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await saveThemePreference(user.id, theme);
+          }
+        } catch (error) {
+          console.error('Error saving theme to localforage:', error);
+        }
       },
       setColorTheme: async (colorTheme) => {
         const root = window.document.documentElement;
@@ -126,6 +148,16 @@ export const useTheme = create<ThemeStore>()(
           root.classList.add(`theme-${colorTheme}`);
         }
         set({ colorTheme });
+        
+        // Also update in localforage
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await saveColorThemePreference(user.id, colorTheme);
+          }
+        } catch (error) {
+          console.error('Error saving color theme to localforage:', error);
+        }
       },
       setHasShownThemePrompt: (value) => {
         set({ hasShownThemePrompt: value });

@@ -10,6 +10,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemePrompt } from '@/components/dashboard/ThemePrompt';
+import { SEO, pageSEO } from '@/utils/seo';
+import { savePosts, getPosts, savePost } from '@/utils/localStorage';
 
 export function Dashboard() {
   const [postContent, setPostContent] = useState('');
@@ -17,10 +19,21 @@ export function Dashboard() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [feedKey, setFeedKey] = useState(0);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const postBoxRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Get current user
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    
+    getCurrentUser();
+  }, []);
 
   // Listen for scroll to top event with improved implementation
   useEffect(() => {
@@ -124,15 +137,26 @@ export function Dashboard() {
       }
 
       // Create post
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('posts')
         .insert({
           content: postContent.trim(),
           user_id: user.id,
           image_url: imageUrl
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Save post to local storage
+      if (data) {
+        await savePost(data.id, data);
+        
+        // Update posts list in local storage
+        const cachedPosts = await getPosts(user.id) || [];
+        await savePosts(user.id, [data, ...cachedPosts]);
+      }
 
       setPostContent('');
       removeImage();
@@ -164,91 +188,94 @@ export function Dashboard() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="max-w-2xl mx-auto relative h-[calc(100vh-60px)]">
-        {/* Stories Container - Fixed at top */}
-        <StoriesContainer />
-        
-        {/* Theme Prompt */}
-        <ThemePrompt />
-        
-        {/* Scrollable Content Area */}
-        <ScrollArea ref={scrollAreaRef} className="h-[calc(100vh-180px)] px-2 scroll-smooth">
-          {/* Post Box */}
-          <Card ref={postBoxRef} className="mb-4 card-gradient animate-fade-in shadow-lg border-2 border-social-green/10 card-hover">
-            <CardContent className="p-4">
-              <div className="space-y-4">
-                <Textarea
-                  placeholder="What's on your mind? Share your thoughts..."
-                  value={postContent}
-                  onChange={(e) => setPostContent(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="w-full min-h-[80px] max-h-[160px] font-pixelated text-sm resize-none focus:ring-2 focus:ring-social-green/20 transition-all duration-200"
-                  disabled={isPosting}
-                />
-                
-                {/* Image Preview */}
-                {imagePreview && (
-                  <div className="relative rounded-lg overflow-hidden border border-social-green/20">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="max-h-60 w-full object-cover"
-                    />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-2 right-2 h-7 w-7 rounded-full shadow-lg hover:scale-105 transition-transform"
-                      onClick={removeImage}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
-                
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <div className="flex items-center gap-3">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageSelect}
-                      className="hidden"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-9 font-pixelated text-xs hover:bg-social-green/5 transition-colors btn-hover-lift"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isPosting}
-                    >
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      Add Image
-                    </Button>
-                    <p className="text-xs text-muted-foreground font-pixelated hidden sm:block">
-                      Press Enter to post
-                    </p>
-                  </div>
-                  <Button
-                    onClick={handlePost}
-                    disabled={(!postContent.trim() && !selectedImage) || isPosting}
-                    size="sm"
-                    className="bg-social-green hover:bg-social-light-green text-white font-pixelated h-9 px-4 btn-hover-lift transition-all duration-200"
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    {isPosting ? 'Posting...' : 'Share Post'}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+    <>
+      <SEO {...pageSEO.dashboard} />
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto relative h-[calc(100vh-60px)]">
+          {/* Stories Container - Fixed at top */}
+          <StoriesContainer />
           
-          {/* Feed with key-based refresh for seamless updates */}
-          <CommunityFeed key={feedKey} />
-        </ScrollArea>
-      </div>
-    </DashboardLayout>
+          {/* Theme Prompt */}
+          <ThemePrompt />
+          
+          {/* Scrollable Content Area */}
+          <ScrollArea ref={scrollAreaRef} className="h-[calc(100vh-180px)] px-2 scroll-smooth">
+            {/* Post Box */}
+            <Card ref={postBoxRef} className="mb-4 card-gradient animate-fade-in shadow-lg border-2 border-social-green/10 card-hover">
+              <CardContent className="p-4">
+                <div className="space-y-4">
+                  <Textarea
+                    placeholder="What's on your mind? Share your thoughts..."
+                    value={postContent}
+                    onChange={(e) => setPostContent(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="w-full min-h-[80px] max-h-[160px] font-pixelated text-sm resize-none focus:ring-2 focus:ring-social-green/20 transition-all duration-200"
+                    disabled={isPosting}
+                  />
+                  
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <div className="relative rounded-lg overflow-hidden border border-social-green/20">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="max-h-60 w-full object-cover"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 h-7 w-7 rounded-full shadow-lg hover:scale-105 transition-transform"
+                        onClick={removeImage}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    <div className="flex items-center gap-3">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 font-pixelated text-xs hover:bg-social-green/5 transition-colors btn-hover-lift"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isPosting}
+                      >
+                        <ImageIcon className="h-4 w-4 mr-2" />
+                        Add Image
+                      </Button>
+                      <p className="text-xs text-muted-foreground font-pixelated hidden sm:block">
+                        Press Enter to post
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handlePost}
+                      disabled={(!postContent.trim() && !selectedImage) || isPosting}
+                      size="sm"
+                      className="bg-social-green hover:bg-social-light-green text-white font-pixelated h-9 px-4 btn-hover-lift transition-all duration-200"
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      {isPosting ? 'Posting...' : 'Share Post'}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Feed with key-based refresh for seamless updates */}
+            <CommunityFeed key={feedKey} />
+          </ScrollArea>
+        </div>
+      </DashboardLayout>
+    </>
   );
 }
 

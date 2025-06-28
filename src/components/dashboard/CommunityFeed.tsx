@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLocation } from 'react-router-dom';
+import { getPosts, savePosts, savePost } from '@/utils/localStorage';
 
 interface Post {
   id: string;
@@ -139,6 +140,15 @@ export function CommunityFeed() {
   // Optimized background fetch
   const fetchPostsInBackground = useCallback(async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      // Try to get posts from local storage first
+      const cachedPosts = await getPosts(user.id);
+      if (cachedPosts && cachedPosts.length > 0 && !loading) {
+        setPosts(cachedPosts);
+      }
+      
       const { data, error } = await supabase
         .from('posts')
         .select(`
@@ -160,14 +170,22 @@ export function CommunityFeed() {
       if (error) throw error;
 
       await fetchLikesAndComments(data || []);
+      
+      // Save to local storage for offline access
+      if (data && data.length > 0) {
+        await savePosts(user.id, data);
+      }
     } catch (error) {
       console.error('Background fetch error:', error);
     }
-  }, []);
+  }, [loading]);
 
   // Separate function to fetch likes and comments
   const fetchLikesAndComments = async (postsData: any[]) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
       const postIds = postsData.map(post => post.id);
       
       if (postIds.length === 0) {
@@ -201,7 +219,7 @@ export function CommunityFeed() {
         const postLikes = likesData.data?.filter(like => like.post_id === post.id) || [];
         const postComments = commentsData.data?.filter(comment => comment.post_id === post.id) || [];
 
-        return {
+        const formattedPost = {
           ...post,
           likes: postLikes,
           comments: postComments,
@@ -210,9 +228,17 @@ export function CommunityFeed() {
             comments: postComments.length
           }
         };
+        
+        // Save individual post to local storage
+        savePost(post.id, formattedPost);
+        
+        return formattedPost;
       });
 
       setPosts(formattedPosts);
+      
+      // Save all posts to local storage
+      await savePosts(user.id, formattedPosts);
     } catch (error) {
       console.error('Error fetching likes and comments:', error);
       // Set posts without likes/comments if there's an error
@@ -282,6 +308,19 @@ export function CommunityFeed() {
               : p
           )
         );
+        
+        // Update post in local storage
+        const updatedPost = posts.find(p => p.id === postId);
+        if (updatedPost) {
+          await savePost(postId, {
+            ...updatedPost,
+            likes: updatedPost.likes.filter(like => like.id !== existingLike.id),
+            _count: {
+              ...updatedPost._count,
+              likes: (updatedPost._count?.likes || 0) - 1
+            }
+          });
+        }
       } else {
         // Like
         const { data, error } = await supabase
@@ -310,6 +349,19 @@ export function CommunityFeed() {
               : p
           )
         );
+        
+        // Update post in local storage
+        const updatedPost = posts.find(p => p.id === postId);
+        if (updatedPost) {
+          await savePost(postId, {
+            ...updatedPost,
+            likes: [...updatedPost.likes, { id: data.id, user_id: currentUser.id }],
+            _count: {
+              ...updatedPost._count,
+              likes: (updatedPost._count?.likes || 0) + 1
+            }
+          });
+        }
       }
     } catch (error) {
       console.error('Error toggling like:', error);
@@ -352,7 +404,7 @@ export function CommunityFeed() {
       if (error) throw error;
 
       // Update posts with new comment
-      setPosts(prevPosts =>
+      const updatedPosts = prevPosts =>
         prevPosts.map(post =>
           post.id === postId
             ? {
@@ -365,8 +417,25 @@ export function CommunityFeed() {
                 }
               }
             : post
-        )
-      );
+        );
+      
+      setPosts(updatedPosts);
+      
+      // Update post in local storage
+      const updatedPost = updatedPosts(posts).find(p => p.id === postId);
+      if (updatedPost) {
+        await savePost(postId, updatedPost);
+        
+        // Also update the posts list
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const cachedPosts = await getPosts(user.id) || [];
+          const updatedCachedPosts = cachedPosts.map(p => 
+            p.id === postId ? updatedPost : p
+          );
+          await savePosts(user.id, updatedCachedPosts);
+        }
+      }
 
       setCommentInputs(prev => ({ ...prev, [postId]: '' }));
       
@@ -398,13 +467,30 @@ export function CommunityFeed() {
 
       if (error) throw error;
 
-      setPosts(prevPosts =>
+      const updatedPosts = prevPosts =>
         prevPosts.map(post =>
           post.id === postId
             ? { ...post, content: editContent.trim(), updated_at: new Date().toISOString() }
             : post
-        )
-      );
+        );
+      
+      setPosts(updatedPosts);
+      
+      // Update post in local storage
+      const updatedPost = updatedPosts(posts).find(p => p.id === postId);
+      if (updatedPost) {
+        await savePost(postId, updatedPost);
+        
+        // Also update the posts list
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const cachedPosts = await getPosts(user.id) || [];
+          const updatedCachedPosts = cachedPosts.map(p => 
+            p.id === postId ? updatedPost : p
+          );
+          await savePosts(user.id, updatedCachedPosts);
+        }
+      }
 
       setEditingPost(null);
       setEditContent('');
@@ -434,6 +520,14 @@ export function CommunityFeed() {
 
       setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
       setDeletePostId(null);
+      
+      // Update local storage
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const cachedPosts = await getPosts(user.id) || [];
+        const updatedCachedPosts = cachedPosts.filter(p => p.id !== postId);
+        await savePosts(user.id, updatedCachedPosts);
+      }
 
       toast({
         title: 'Post deleted',
@@ -459,7 +553,7 @@ export function CommunityFeed() {
       if (error) throw error;
 
       // Update posts to remove the deleted comment
-      setPosts(prevPosts =>
+      const updatedPosts = prevPosts =>
         prevPosts.map(post =>
           post.id === postId
             ? {
@@ -472,8 +566,25 @@ export function CommunityFeed() {
                 }
               }
             : post
-        )
-      );
+        );
+      
+      setPosts(updatedPosts);
+      
+      // Update post in local storage
+      const updatedPost = updatedPosts(posts).find(p => p.id === postId);
+      if (updatedPost) {
+        await savePost(postId, updatedPost);
+        
+        // Also update the posts list
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const cachedPosts = await getPosts(user.id) || [];
+          const updatedCachedPosts = cachedPosts.map(p => 
+            p.id === postId ? updatedPost : p
+          );
+          await savePosts(user.id, updatedCachedPosts);
+        }
+      }
 
       setDeleteCommentId(null);
 

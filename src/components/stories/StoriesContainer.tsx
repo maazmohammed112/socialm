@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { StoryViewer } from './StoryViewer';
 import { AddStoryDialog } from './AddStoryDialog';
 import { ProfilePictureViewer } from './ProfilePictureViewer';
+import { getViewedStories, saveViewedStories, addViewedStory } from '@/utils/localStorage';
 
 interface Story {
   id: string;
@@ -39,7 +40,7 @@ const StoriesContainer = React.memo(() => {
   const [viewedStories, setViewedStories] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
-  // Enhanced story view tracking with cross-device sync
+  // Enhanced story view tracking with cross-device sync and local storage
   const markStoryAsViewed = useCallback(async (storyId: string, userId: string) => {
     try {
       // Update local state immediately
@@ -48,8 +49,7 @@ const StoriesContainer = React.memo(() => {
       setViewedStories(newViewedStories);
 
       // Save to localStorage with user-specific key
-      const viewedStoriesKey = `viewed_stories_${userId}`;
-      localStorage.setItem(viewedStoriesKey, JSON.stringify(Array.from(newViewedStories)));
+      await saveViewedStories(userId, Array.from(newViewedStories));
 
       // Create or update story view record in database for cross-device sync
       const { error: viewError } = await supabase
@@ -84,12 +84,10 @@ const StoriesContainer = React.memo(() => {
   const loadViewedStories = useCallback(async (userId: string) => {
     try {
       // Load from localStorage first (for immediate UI update)
-      const viewedStoriesKey = `viewed_stories_${userId}`;
-      const localViewedStories = localStorage.getItem(viewedStoriesKey);
-      let localViewed = new Set<string>();
+      const localViewedStories = await getViewedStories(userId);
+      let localViewed = new Set<string>(localViewedStories);
       
-      if (localViewedStories) {
-        localViewed = new Set(JSON.parse(localViewedStories));
+      if (localViewedStories.length > 0) {
         setViewedStories(localViewed);
       }
 
@@ -111,7 +109,7 @@ const StoriesContainer = React.memo(() => {
       setViewedStories(mergedViewed);
       
       // Update localStorage with merged data
-      localStorage.setItem(viewedStoriesKey, JSON.stringify(Array.from(mergedViewed)));
+      await saveViewedStories(userId, Array.from(mergedViewed));
 
     } catch (error) {
       console.error('Error loading viewed stories:', error);
@@ -260,8 +258,7 @@ const StoriesContainer = React.memo(() => {
               newViewed.add(storyId);
               
               // Update localStorage
-              const viewedStoriesKey = `viewed_stories_${currentUser.id}`;
-              localStorage.setItem(viewedStoriesKey, JSON.stringify(Array.from(newViewed)));
+              saveViewedStories(currentUser.id, Array.from(newViewed));
               
               return newViewed;
             });
@@ -318,6 +315,9 @@ const StoriesContainer = React.memo(() => {
         } else {
           // Mark as viewed with cross-device sync
           await markStoryAsViewed(story.id, currentUser.id);
+          
+          // Also save to local storage
+          await addViewedStory(currentUser.id, story.id);
 
           // Update local state with new view count
           setStories(prevStories => 

@@ -54,11 +54,20 @@ Allow: /
 User-agent: Claude-Web
 Allow: /
 
+# Allow public pages
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /about
+Allow: /features
+Allow: /privacy
+Allow: /terms
+Allow: /sitemap.xml
+Allow: /robots.txt
+
 # Restrict sensitive areas
 Disallow: /admin
 Disallow: /api/
-Disallow: /login
-Disallow: /register
 Disallow: /dashboard
 Disallow: /messages
 Disallow: /notifications
