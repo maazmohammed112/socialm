@@ -54,29 +54,8 @@ Allow: /
 User-agent: Claude-Web
 Allow: /
 
-# Restrict sensitive areas
-Disallow: /admin
-Disallow: /api/
-Disallow: /login
-Disallow: /register
-Disallow: /dashboard
-Disallow: /messages
-Disallow: /notifications
-Disallow: /profile
-Disallow: /settings
-Disallow: /friends
-Disallow: /_next/
-Disallow: /node_modules/
-Disallow: /.git/
-Disallow: /supabase/
-Disallow: /src/
-Disallow: /dist/
-Disallow: /*.json$
-Disallow: /*.config.*
-Disallow: /package.json
-Disallow: /tsconfig.json
-Disallow: /vite.config.ts
-Disallow: /.env*
+# Sitemap location
+Sitemap: https://socialchat.site/sitemap.xml
 
 # Allow public assets
 Allow: /lovable-uploads/
@@ -95,6 +74,3 @@ Allow: /*.wav
 
 # Crawl delay (be respectful)
 Crawl-delay: 1
-
-# Sitemap location
-Sitemap: https://socialchat.site/sitemap.xml
