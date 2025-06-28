@@ -116,12 +116,12 @@ export function updateSEO(data: SEOData) {
   }
 
   // Twitter Card tags
-  updateMetaTag('twitter:card', 'summary_large_image', 'name');
-  updateMetaTag('twitter:title', data.title, 'name');
-  updateMetaTag('twitter:description', data.description, 'name');
+  updateMetaTag('twitter:card', 'summary_large_image');
+  updateMetaTag('twitter:title', data.title);
+  updateMetaTag('twitter:description', data.description);
   
   if (data.ogImage) {
-    updateMetaTag('twitter:image', data.ogImage, 'name');
+    updateMetaTag('twitter:image', data.ogImage);
   }
 
   // Article specific tags
@@ -138,14 +138,19 @@ export function updateSEO(data: SEOData) {
   }
 }
 
-function updateMetaTag(name: string, content: string, attribute: 'name' | 'property' = 'name') {
-  let element = document.querySelector(`meta[${attribute}="${name}"]`) as HTMLMetaElement;
+function updateMetaTag(name: string, content: string, attributeType: 'name' | 'property' = 'name') {
+  // Use explicit string literals for the selector to help SWC transformer
+  const selector = attributeType === 'property' 
+    ? `meta[property="${name}"]` 
+    : `meta[name="${name}"]`;
+  
+  let element = document.querySelector(selector) as HTMLMetaElement;
   
   if (element) {
     element.content = content;
   } else {
     element = document.createElement('meta');
-    element.setAttribute(attribute, name);
+    element.setAttribute(attributeType, name);
     element.content = content;
     document.head.appendChild(element);
   }
