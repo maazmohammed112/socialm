@@ -12,7 +12,11 @@ export default defineConfig(({ mode }) => ({
     }
   },
   plugins: [
-    react()
+    react({
+      plugins: [
+        ['@swc/plugin-emotion', {}]
+      ]
+    })
   ],
   resolve: {
     alias: {
@@ -24,18 +28,22 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false,
     minify: true,
     cssMinify: true,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
           ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
+          supabase: ['@supabase/supabase-js'],
+          forms: ['react-hook-form', 'zod'],
+          utils: ['date-fns', 'clsx', 'tailwind-merge']
         },
       },
     },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react-router-dom'],
+    include: ['react', 'react-dom', 'react-router-dom', '@supabase/supabase-js'],
     esbuildOptions: {
       target: 'es2020',
     }

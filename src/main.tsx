@@ -13,6 +13,8 @@ const queryClient = new QueryClient({
       cacheTime: 1000 * 60 * 30, // Cache persists for 30 minutes
       refetchOnWindowFocus: false,
       retry: 1,
+      refetchOnReconnect: 'always',
+      networkMode: 'always',
     },
   },
 });

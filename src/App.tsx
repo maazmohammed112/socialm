@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,18 +11,18 @@ import { useTheme } from "@/hooks/use-theme";
 import { FirebaseNotificationProvider } from "@/components/notifications/FirebaseNotificationProvider";
 import { useToast } from "@/hooks/use-toast";
 
-// Pages
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import Friends from "./pages/Friends";
-import Messages from "./pages/Messages";
-import Vortex from "./pages/Vortex";
-import Notifications from "./pages/Notifications";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
+// Lazy load pages for better performance
+const Index = lazy(() => import("./pages/Index"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Friends = lazy(() => import("./pages/Friends"));
+const Messages = lazy(() => import("./pages/Messages"));
+const Vortex = lazy(() => import("./pages/Vortex"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Components
 import { AuthGuard } from "./components/common/AuthGuard";
@@ -86,6 +86,12 @@ const App = () => {
   }, [toast]);
   
   useEffect(() => {
+    // Remove initial loader when component mounts
+    const initialLoader = document.querySelector('.initial-loader');
+    if (initialLoader) {
+      initialLoader.remove();
+    }
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
@@ -112,7 +118,7 @@ const App = () => {
       console.log('Initial session check:', session?.user?.id);
       setSession(session);
       // Add a small delay to show the loading animation
-      setTimeout(() => setLoading(false), 1500);
+      setTimeout(() => setLoading(false), 1000);
     });
 
     return () => {
@@ -131,82 +137,84 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              {/* Public Routes */}
-              <Route 
-                path="/" 
-                element={session ? <Navigate to="/dashboard" replace /> : <Index />} 
-              />
-              <Route 
-                path="/login" 
-                element={session ? <Navigate to="/dashboard" replace /> : <Login />} 
-              />
-              <Route 
-                path="/register" 
-                element={session ? <Navigate to="/dashboard" replace /> : <Register />} 
-              />
-              
-              {/* Protected Routes */}
-              <Route 
-                path="/dashboard" 
-                element={
-                  <AuthGuard>
-                    <Dashboard />
-                  </AuthGuard>
-                } 
-              />
-              <Route 
-                path="/friends" 
-                element={
-                  <AuthGuard>
-                    <Friends />
-                  </AuthGuard>
-                } 
-              />
-              <Route 
-                path="/messages" 
-                element={
-                  <AuthGuard>
-                    <Messages />
-                  </AuthGuard>
-                } 
-              />
-              <Route 
-                path="/vortex" 
-                element={
-                  <AuthGuard>
-                    <Vortex />
-                  </AuthGuard>
-                } 
-              />
-              <Route 
-                path="/notifications" 
-                element={
-                  <AuthGuard>
-                    <Notifications />
-                  </AuthGuard>
-                } 
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <AuthGuard>
-                    <Profile />
-                  </AuthGuard>
-                } 
-              />
-              <Route 
-                path="/settings" 
-                element={
-                  <AuthGuard>
-                    <Settings />
-                  </AuthGuard>
-                } 
-              />
-              
-              {/* 404 Route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<LoadingScreen />}>
+              <Routes>
+                {/* Public Routes */}
+                <Route 
+                  path="/" 
+                  element={session ? <Navigate to="/dashboard" replace /> : <Index />} 
+                />
+                <Route 
+                  path="/login" 
+                  element={session ? <Navigate to="/dashboard" replace /> : <Login />} 
+                />
+                <Route 
+                  path="/register" 
+                  element={session ? <Navigate to="/dashboard" replace /> : <Register />} 
+                />
+                
+                {/* Protected Routes */}
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <AuthGuard>
+                      <Dashboard />
+                    </AuthGuard>
+                  } 
+                />
+                <Route 
+                  path="/friends" 
+                  element={
+                    <AuthGuard>
+                      <Friends />
+                    </AuthGuard>
+                  } 
+                />
+                <Route 
+                  path="/messages" 
+                  element={
+                    <AuthGuard>
+                      <Messages />
+                    </AuthGuard>
+                  } 
+                />
+                <Route 
+                  path="/vortex" 
+                  element={
+                    <AuthGuard>
+                      <Vortex />
+                    </AuthGuard>
+                  } 
+                />
+                <Route 
+                  path="/notifications" 
+                  element={
+                    <AuthGuard>
+                      <Notifications />
+                    </AuthGuard>
+                  } 
+                />
+                <Route 
+                  path="/profile" 
+                  element={
+                    <AuthGuard>
+                      <Profile />
+                    </AuthGuard>
+                  } 
+                />
+                <Route 
+                  path="/settings" 
+                  element={
+                    <AuthGuard>
+                      <Settings />
+                    </AuthGuard>
+                  } 
+                />
+                
+                {/* 404 Route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </FirebaseNotificationProvider>
